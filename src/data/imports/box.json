@@ -1,0 +1,44 @@
+[
+  {
+    "speciesId": "387",
+    "nickname": "A",
+    "otId": 724757674,
+    "personality": 2466958320,
+    "level": 12,
+    "experience": 973,
+    "nature": "Calm",
+    "abilityNum": 0,
+    "item": 0,
+    "moves": [44, 45, 71, 590],
+    "ivs": {"hp": 1, "atk": 31, "def": 29, "spa": 31, "spd": 31, "spe": 28},
+    "evs": {"hp": 0, "atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0}
+  },
+  {
+    "speciesId": "585",
+    "nickname": "Deerling",
+    "otId": 724757674,
+    "personality": 944314188,
+    "level": 12,
+    "experience": 1728,
+    "nature": "Jolly",
+    "abilityNum": 0,
+    "item": 0,
+    "moves": [75, 24, 45, 28],
+    "ivs": {"hp": 26, "atk": 28, "def": 16, "spa": 20, "spd": 22, "spe": 9},
+    "evs": {"hp": 0, "atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0}
+  },
+  {
+    "speciesId": "659",
+    "nickname": "Bunnelby",
+    "otId": 724757674,
+    "personality": 3742984750,
+    "level": 12,
+    "experience": 1728,
+    "nature": "Hardy",
+    "abilityNum": 0,
+    "item": 0,
+    "moves": [33, 43, 98, 3],
+    "ivs": {"hp": 13, "atk": 9, "def": 14, "spa": 8, "spd": 29, "spe": 1},
+    "evs": {"hp": 0, "atk": 0, "def": 0, "spa": 0, "spd": 0, "spe": 0}
+  }
+]
