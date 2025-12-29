@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pokemon Run & Bun Helper Tool
+
+A comprehensive assistant for the "Pokemon Run & Bun" ROM hack. This tool provides real-time battle intelligence, AI move prediction, and deep simulation to help players navigate one of the most challenging Pokemon experiences.
+
+## Core Components
+
+- **Lua Overlay**: An in-game script that extracts live battle data and displays enemy stats, party info, and move predictions directly on the emulator.
+- **Orchestrator (Python)**: The brain of the project. It coordinates data extraction, runs simulations, and generates strategy recommendations.
+- **Battle Engine (Python)**: A custom-built engine designed for high-fidelity simulation of Gen 8 mechanics (with Run & Bun specific tweaks).
+- **Calc Service (Node.js)**: A lightweight wrapper around `@smogon/calc` that provides accurate damage rolls for the engine and AI scorer.
+
+## Features
+
+- **High-Fidelity Simulation**: Supports complex mechanics including Weather, Terrain, Hazards, Screens, and Speed Control (Tailwind/Trick Room).
+- **AI Prediction**: Models the opponent's behavior based on the specific AI heuristics used in the ROM hack.
+- **Advanced Forecasting**: Uses Beam Search with Iterative Deepening to project battle outcomes up to 20 turns ahead.
+- **Status Tracking**: Accurately tracks primary and volatile statuses (Sleep counters, Confusion turns, Taunt durations).
 
 ## Getting Started
 
-First, run the development server:
+1. **Services**: Start the Calc Service and Orchestrator using `./start_services.sh`.
+2. **Emulator**: Load the Lua script located in `lua/` into your emulator (designed for mGBA/BizHawk).
+3. **Overlay**: The overlay will automatically update as the battle progresses.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Project Structure
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- `app/`: Core Python logic (Battle Engine, Strategy Advisor, AI Scorer).
+- `calc_service/`: Node.js damage calculation microservice.
+- `lua/`: Emulator scripts for data extraction and UI overlay.
+- `data/`: Game metadata (Moves, Species, Trainers) and test cases.
+- `tools/`: CLI utilities for running simulations and debugging.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Status
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For a detailed roadmap and current implementation status, see [FULL_IMPLEMENTATION_PLAN.md](./FULL_IMPLEMENTATION_PLAN.md).

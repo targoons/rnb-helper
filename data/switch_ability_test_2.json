@@ -1,0 +1,108 @@
+{
+    "player_side": {
+        "active": {
+            "species": "Chansey",
+            "level": 100,
+            "current_hp": 300,
+            "max_hp": 300,
+            "stats": {
+                "atk": 50,
+                "def": 50,
+                "spa": 100,
+                "spd": 300,
+                "spe": 100
+            },
+            "stat_stages": {
+                "atk": 0,
+                "def": 0,
+                "spa": 0,
+                "spd": 0,
+                "spe": 0
+            },
+            "moves": [
+                "Seismic Toss"
+            ],
+            "ability": "Natural Cure",
+            "status": "par",
+            "item": "Eviolite"
+        },
+        "party": [
+            {
+                "species": "Porygon-Z",
+                "level": 100,
+                "current_hp": 300,
+                "max_hp": 300,
+                "stats": {
+                    "atk": 100,
+                    "def": 150,
+                    "spa": 300,
+                    "spd": 150,
+                    "spe": 200
+                },
+                "stat_stages": {},
+                "moves": [
+                    "Tri Attack"
+                ],
+                "ability": "Download",
+                "item": "Life Orb"
+            },
+            {
+                "species": "Chansey",
+                "level": 100,
+                "current_hp": 300,
+                "max_hp": 300,
+                "stats": {
+                    "atk": 50,
+                    "def": 50,
+                    "spa": 100,
+                    "spd": 300,
+                    "spe": 100
+                },
+                "stat_stages": {},
+                "moves": [
+                    "Seismic Toss"
+                ],
+                "ability": "Natural Cure",
+                "status": "par",
+                "item": "Eviolite"
+            }
+        ]
+    },
+    "opponent_side": {
+        "active": {
+            "species": "Golem",
+            "level": 100,
+            "current_hp": 300,
+            "max_hp": 300,
+            "stats": {
+                "atk": 300,
+                "def": 100,
+                "spa": 100,
+                "spd": 200,
+                "spe": 100
+            },
+            "stat_stages": {
+                "atk": 0,
+                "def": 0,
+                "spa": 0,
+                "spd": 0,
+                "spe": 0
+            },
+            "moves": [
+                "Defense Curl"
+            ],
+            "ability": "Sturdy",
+            "item": "Leftovers"
+        },
+        "party": []
+    },
+    "fields": {
+        "weather": "None",
+        "terrain": "None",
+        "hazards": {
+            "player": [],
+            "ai": []
+        }
+    },
+    "turn": 1
+}

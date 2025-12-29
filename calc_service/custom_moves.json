@@ -1,0 +1,38 @@
+{
+    "Absorb": {
+        "bp": 40
+    },
+    "Astonish": {
+        "bp": 40
+    },
+    "Charge Beam": {
+        "bp": 40
+    },
+    "Covet": {
+        "type": "Fairy"
+    },
+    "Frustration": {
+        "bp": 102
+    },
+    "Lick": {
+        "bp": 40
+    },
+    "Mega Drain": {
+        "bp": 60
+    },
+    "Misty Explosion": {
+        "bp": 200
+    },
+    "Octazooka": {
+        "bp": 80
+    },
+    "Return": {
+        "bp": 102
+    },
+    "Super Fang": {
+        "type": "Dark"
+    },
+    "Hidden Power": {
+        "bp": 60
+    }
+}

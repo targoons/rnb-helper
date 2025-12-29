@@ -1,0 +1,11 @@
+{
+  "name": "rnb-calc-service",
+  "version": "1.0.0",
+  "description": "Damage calculation microservice for Pokemon Run and Bun",
+  "main": "server.js",
+  "dependencies": {
+    "@smogon/calc": "^0.10.0",
+    "body-parser": "^1.20.2",
+    "express": "^4.18.2"
+  }
+}

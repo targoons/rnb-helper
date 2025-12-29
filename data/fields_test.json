@@ -1,0 +1,365 @@
+[
+    {
+        "name": "Sandstorm Damage Test",
+        "state": {
+            "player_side": {
+                "active": {
+                    "species": "Pikachu",
+                    "current_hp": 100,
+                    "max_hp": 100,
+                    "types": [
+                        "Electric"
+                    ],
+                    "stats": {
+                        "spe": 100
+                    },
+                    "stat_stages": {},
+                    "moves": [
+                        "Thunderbolt"
+                    ]
+                },
+                "party": []
+            },
+            "opponent_side": {
+                "active": {
+                    "species": "Tyranitar",
+                    "current_hp": 200,
+                    "max_hp": 200,
+                    "types": [
+                        "Rock",
+                        "Dark"
+                    ],
+                    "stats": {
+                        "spe": 61
+                    },
+                    "stat_stages": {},
+                    "moves": [
+                        "Crunch"
+                    ]
+                },
+                "party": []
+            },
+            "fields": {
+                "weather": "Sandstorm",
+                "weather_turns": 5,
+                "terrain": null,
+                "terrain_turns": 0,
+                "screens": {
+                    "player": {
+                        "reflect": 0,
+                        "light_screen": 0,
+                        "aurora_veil": 0
+                    },
+                    "ai": {
+                        "reflect": 0,
+                        "light_screen": 0,
+                        "aurora_veil": 0
+                    }
+                },
+                "tailwind": {
+                    "player": 0,
+                    "ai": 0
+                },
+                "trick_room": 0,
+                "hazards": {
+                    "player": [],
+                    "ai": []
+                }
+            }
+        }
+    },
+    {
+        "name": "Tailwind Speed Test",
+        "state": {
+            "player_side": {
+                "active": {
+                    "species": "Machamp",
+                    "current_hp": 100,
+                    "max_hp": 100,
+                    "types": [
+                        "Fighting"
+                    ],
+                    "stats": {
+                        "spe": 55
+                    },
+                    "stat_stages": {},
+                    "moves": [
+                        "Close Combat"
+                    ]
+                },
+                "party": []
+            },
+            "opponent_side": {
+                "active": {
+                    "species": "Pikachu",
+                    "current_hp": 100,
+                    "max_hp": 100,
+                    "types": [
+                        "Electric"
+                    ],
+                    "stats": {
+                        "spe": 90
+                    },
+                    "stat_stages": {},
+                    "moves": [
+                        "Thunderbolt"
+                    ]
+                },
+                "party": []
+            },
+            "fields": {
+                "weather": null,
+                "weather_turns": 0,
+                "terrain": null,
+                "terrain_turns": 0,
+                "screens": {
+                    "player": {
+                        "reflect": 0,
+                        "light_screen": 0,
+                        "aurora_veil": 0
+                    },
+                    "ai": {
+                        "reflect": 0,
+                        "light_screen": 0,
+                        "aurora_veil": 0
+                    }
+                },
+                "tailwind": {
+                    "player": 2,
+                    "ai": 0
+                },
+                "trick_room": 0,
+                "hazards": {
+                    "player": [],
+                    "ai": []
+                }
+            }
+        }
+    },
+    {
+        "name": "Trick Room Speed Test",
+        "state": {
+            "player_side": {
+                "active": {
+                    "species": "Machamp",
+                    "current_hp": 100,
+                    "max_hp": 100,
+                    "types": [
+                        "Fighting"
+                    ],
+                    "stats": {
+                        "spe": 55
+                    },
+                    "stat_stages": {},
+                    "moves": [
+                        "Close Combat"
+                    ]
+                },
+                "party": []
+            },
+            "opponent_side": {
+                "active": {
+                    "species": "Pikachu",
+                    "current_hp": 100,
+                    "max_hp": 100,
+                    "types": [
+                        "Electric"
+                    ],
+                    "stats": {
+                        "spe": 90
+                    },
+                    "stat_stages": {},
+                    "moves": [
+                        "Thunderbolt"
+                    ]
+                },
+                "party": []
+            },
+            "fields": {
+                "weather": null,
+                "weather_turns": 0,
+                "terrain": null,
+                "terrain_turns": 0,
+                "screens": {
+                    "player": {
+                        "reflect": 0,
+                        "light_screen": 0,
+                        "aurora_veil": 0
+                    },
+                    "ai": {
+                        "reflect": 0,
+                        "light_screen": 0,
+                        "aurora_veil": 0
+                    }
+                },
+                "tailwind": {
+                    "player": 0,
+                    "ai": 0
+                },
+                "trick_room": 5,
+                "hazards": {
+                    "player": [],
+                    "ai": []
+                }
+            }
+        }
+    },
+    {
+        "name": "Spikes Switch-in Damage",
+        "state": {
+            "player_side": {
+                "active": {
+                    "species": "Slowbro",
+                    "current_hp": 100,
+                    "max_hp": 100,
+                    "types": [
+                        "Water",
+                        "Psychic"
+                    ],
+                    "stats": {
+                        "spe": 30
+                    },
+                    "stat_stages": {},
+                    "moves": [
+                        "Surf"
+                    ]
+                },
+                "party": [
+                    {
+                        "species": "Machamp",
+                        "current_hp": 100,
+                        "max_hp": 100,
+                        "types": [
+                            "Fighting"
+                        ],
+                        "stats": {
+                            "spe": 55
+                        },
+                        "stat_stages": {},
+                        "moves": [
+                            "Close Combat"
+                        ]
+                    }
+                ]
+            },
+            "opponent_side": {
+                "active": {
+                    "species": "Tyranitar",
+                    "current_hp": 200,
+                    "max_hp": 200,
+                    "types": [
+                        "Rock",
+                        "Dark"
+                    ],
+                    "stats": {
+                        "spe": 61
+                    },
+                    "stat_stages": {},
+                    "moves": [
+                        "Crunch"
+                    ]
+                },
+                "party": []
+            },
+            "fields": {
+                "weather": null,
+                "weather_turns": 0,
+                "terrain": null,
+                "terrain_turns": 0,
+                "screens": {
+                    "player": {
+                        "reflect": 0,
+                        "light_screen": 0,
+                        "aurora_veil": 0
+                    },
+                    "ai": {
+                        "reflect": 0,
+                        "light_screen": 0,
+                        "aurora_veil": 0
+                    }
+                },
+                "tailwind": {
+                    "player": 0,
+                    "ai": 0
+                },
+                "trick_room": 0,
+                "hazards": {
+                    "player": [
+                        "Spikes",
+                        "Spikes"
+                    ],
+                    "ai": []
+                }
+            }
+        }
+    },
+    {
+        "name": "Reflect/Light Screen Test",
+        "state": {
+            "player_side": {
+                "active": {
+                    "species": "Pikachu",
+                    "current_hp": 100,
+                    "max_hp": 100,
+                    "types": [
+                        "Electric"
+                    ],
+                    "stats": {
+                        "spe": 100
+                    },
+                    "stat_stages": {},
+                    "moves": [
+                        "Brick Break"
+                    ]
+                },
+                "party": []
+            },
+            "opponent_side": {
+                "active": {
+                    "species": "Slowbro",
+                    "current_hp": 300,
+                    "max_hp": 300,
+                    "types": [
+                        "Water",
+                        "Psychic"
+                    ],
+                    "stats": {
+                        "spe": 30
+                    },
+                    "stat_stages": {},
+                    "moves": [
+                        "Surf"
+                    ]
+                },
+                "party": []
+            },
+            "fields": {
+                "weather": null,
+                "weather_turns": 0,
+                "terrain": null,
+                "terrain_turns": 0,
+                "screens": {
+                    "player": {
+                        "reflect": 5,
+                        "light_screen": 5,
+                        "aurora_veil": 0
+                    },
+                    "ai": {
+                        "reflect": 5,
+                        "light_screen": 5,
+                        "aurora_veil": 0
+                    }
+                },
+                "tailwind": {
+                    "player": 0,
+                    "ai": 0
+                },
+                "trick_room": 0,
+                "hazards": {
+                    "player": [],
+                    "ai": []
+                }
+            }
+        }
+    }
+]
