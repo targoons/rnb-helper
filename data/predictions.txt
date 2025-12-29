@@ -1,11 +1,11 @@
-[PREDICTIONS] 23:41:29
-[BATTLE] Turtwig vs Starly
+[PREDICTIONS] 00:05:39
+[BATTLE] Turtwig vs Rookidee
 Speed: 15 vs 11 (PLAYER FASTER)
 
 [AI PREDICTION]
-  Tackle: 6 | 8.1-10.8%
-  Growl: 6 | 0.0-0.0%
-  Quick Attack: 6 | 8.1-10.8%
+  Peck: 6 | 16.2-21.6%
+  Leer: 6 | 0.0-0.0%
+  Fury Attack: 0 | 8.1-16.2%
 
 [TIP]
 Run 'python3 tools/run_sim.py' for deep turn simulation.
