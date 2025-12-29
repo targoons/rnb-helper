@@ -106,6 +106,7 @@ app.post('/batch-calculate', (req, res) => {
             const rawAttName = attData.name || getSpeciesName(attData.speciesId || attData.species_id);
             const attName = findSafeSpecies(rawAttName);
             attacker = new Pokemon(gen, attName, {
+                ability: attData.ability,
                 item: typeof attData.item === 'string' ? attData.item : undefined,
                 nature: attData.nature === 'Unknown' ? 'Hardy' : attData.nature,
                 level: attData.level || 50,
@@ -118,7 +119,8 @@ app.post('/batch-calculate', (req, res) => {
                     spd: attData.ivs.spd !== undefined ? attData.ivs.spd : 31,
                     spe: attData.ivs.spe !== undefined ? attData.ivs.spe : 31
                 } : undefined,
-                boosts: correctBoosts
+                boosts: correctBoosts,
+                abilityOn: attData.flash_fire || attData.abilityOn
             });
 
             if (attData.stats && attacker.stats) {
@@ -149,6 +151,7 @@ app.post('/batch-calculate', (req, res) => {
             }
 
             defender = new Pokemon(gen, defName, {
+                ability: defData.ability,
                 item: typeof defData.item === 'string' ? defData.item : undefined,
                 nature: defData.nature === 'Unknown' ? 'Hardy' : defData.nature,
                 level: defData.level || 50,
@@ -194,7 +197,8 @@ app.post('/batch-calculate', (req, res) => {
                 status: p.status,
                 ivs: p.ivs,
                 evs: p.evs,
-                curHP: p.curHP
+                curHP: p.curHP,
+                abilityOn: p.abilityOn
             };
             if (p.boosts) options.boosts = { ...p.boosts };
             if (p.stats) options.overrides = { stats: { ...p.stats } };
