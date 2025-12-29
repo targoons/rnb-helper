@@ -101,7 +101,7 @@ class TestBattleSimulator(unittest.TestCase):
         s, log = self.engine.apply_turn(self.state, "Switch: BenchMon", "Move: WeakMove")
         
         self.assertEqual(s.player_active['species'], 'BenchMon')
-        self.assertIn("player switched to BenchMon", log[0]) # Priority
+        self.assertIn("[PLAYER] switched to BenchMon", log[0]) # Priority
         self.assertIn("Villain used WeakMove", log[1]) # Villain hits new mon
         self.assertEqual(s.player_active['current_hp'], 90) # 100 - 10
 
