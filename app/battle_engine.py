@@ -594,12 +594,20 @@ class BattleEngine:
                      stages['spa'] = min(6, stages.get('spa', 0) + 1)
                      log.append(f"  {defender.get('species')}'s Sp. Atk rose (Storm Drain)!")
                  return
+
+            # Sap Sipper
+            if move_type == 'Grass' and def_ability == 'Sap Sipper':
+                 log.append(f"[{attacker_side.upper()}] {attacker.get('species')} used {move_name}")
+                 stages = defender.setdefault('stat_stages', {})
+                 stages['atk'] = min(6, stages.get('atk', 0) + 1)
+                 log.append(f"  {defender.get('species')}'s Attack rose (Sap Sipper)!")
+                 return
                  
             # Flash Fire
             if move_type == 'Fire' and def_ability == 'Flash Fire':
                  log.append(f"[{attacker_side.upper()}] {attacker.get('species')} used {move_name}")
                  log.append(f"  {defender.get('species')}'s Fire power rose (Flash Fire)!")
-                 # TODO: Set Flash Fire flag
+                 defender['flash_fire'] = True
                  return
                  
             # Levitate (Ground)
