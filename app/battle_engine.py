@@ -144,6 +144,18 @@ class BattleEngine:
         # 0.5 Init Turn Flags
         new_state.fields['protected_sides'] = []
 
+        # Start of Turn Effects (Quick Claw, Custap Berry, etc)
+        if not player_action.startswith("Switch:"):
+            Mechanics.apply_start_turn_effects(new_state.player_active, new_state, log)
+        else:
+             # Ensure mod is 0 for switch logic just in case
+             new_state.player_active['turn_priority_mod'] = 0
+
+        if not ai_action.startswith("Switch:"):
+            Mechanics.apply_start_turn_effects(new_state.ai_active, new_state, log)
+        else:
+             new_state.ai_active['turn_priority_mod'] = 0
+
         # 1. Determine Order
         player_speed = Mechanics.get_effective_speed(new_state.player_active, new_state.fields, side='player')
         ai_speed = Mechanics.get_effective_speed(new_state.ai_active, new_state.fields, side='ai')
@@ -168,10 +180,20 @@ class BattleEngine:
         if p_prio > a_prio: player_first = True
         elif a_prio > p_prio: player_first = False
         else:
-             if new_state.fields.get('trick_room', 0) > 0:
-                 player_first = player_speed <= ai_speed
+             # Equal Move Priority -> Check Turn Priority Mod (Quick Claw, etc)
+             p_mod = new_state.player_active.get('turn_priority_mod', 0)
+             a_mod = new_state.ai_active.get('turn_priority_mod', 0)
+
+             if p_mod > a_mod:
+                 player_first = True
+             elif a_mod > p_mod:
+                 player_first = False
              else:
-                 player_first = player_speed >= ai_speed # Speed ties -> Player wins (Optimistic)
+                 # Speed Check
+                 if new_state.fields.get('trick_room', 0) > 0:
+                     player_first = player_speed <= ai_speed
+                 else:
+                     player_first = player_speed >= ai_speed # Speed ties -> Player wins (Optimistic)
         
         first = ('player', player_action) if player_first else ('ai', ai_action)
         second = ('ai', ai_action) if player_first else ('player', player_action)
