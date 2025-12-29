@@ -45,15 +45,23 @@ class AIScorer:
              if "Sucker Punch" in str(last_move_str): sucker_penalty = 20
 
         # Check if AI is dead to player (Threatened)
-        # We assume if player has a kill move, AI is threatened. 
-        # But we don't have player calc here easily.
-        # Approximatim: AI is dead if HP is low? No.
-        # For priority logic "If AI is dead to player mon and slower".
-        # We need this.
-        # I'll default to False for now or use a heuristic (HP < 30%?).
-        # "AI expects to die" is hard without reverse calc.
-        ai_threatened = False # Placeholder
-        if attacker.get('current_hp', 0) < attacker.get('max_hp') * 0.25: ai_threatened = True # Very rough guess
+        # "If AI is dead to player mon and slower"
+        ai_threatened = False
+        if side == 'ai':
+             # Calculate Player -> AI Damage
+             # We need to simulate Player attacking AI to see if they can kill
+             p_moves = defender.get('moves', [])
+             if p_moves:
+                  # Note: This adds overhead (another calc call) but is necessary for accurate logic
+                  p_calc = self.calc_client.get_damage_rolls(defender, attacker, p_moves, state.fields)
+                  current_hp = attacker.get('current_hp', 0)
+                  if p_calc:
+                      for res in p_calc:
+                          # Check max roll
+                          rolls = res.get('damage_rolls', [0])
+                          if rolls and rolls[-1] >= current_hp:
+                               ai_threatened = True
+                               break
 
         for m_idx, res in enumerate(calc_res):
             name = res.get('moveName')
