@@ -195,6 +195,42 @@ class Mechanics:
                       log.append(f"  {mon.get('species')} healed by Grassy Terrain (+{heal})")
 
     @staticmethod
-    def apply_start_turn_effects(mon, log):
-        # TODO: Handle things that happen at start (e.g. abilities)
-        pass
+    def apply_start_turn_effects(mon, state, log):
+        mon['turn_priority_mod'] = 0
+        ability = mon.get('ability', '')
+        item = mon.get('item', '')
+
+        # 0. Apply Negative Priority First (Stall / Lagging Tail)
+        # If both Stall and Lagging Tail are present, it remains -1.
+        if ability == 'Stall' or item in ['Lagging Tail', 'Full Incense']:
+            mon['turn_priority_mod'] = -1
+
+        # 1. Quick Claw
+        if item == 'Quick Claw':
+            if hash(str(state.get_hash()) + 'qc' + mon.get('species', '')) % 100 < 20:
+                mon['turn_priority_mod'] = 1
+                log.append(f"  Quick Claw let {mon.get('species')} move first!")
+
+        # 2. Quick Draw
+        # Independent check. If both Quick Claw and Quick Draw proc, it's still just priority +1.
+        # But we want to give chance for both to fire (though effect is same).
+        # We only log if it affects the outcome? Or log both?
+        # Standard behavior: If Quick Claw fires, we don't necessarily check Quick Draw?
+        # Actually, they are independent events.
+        # If Quick Claw activates, we are already +1.
+        # If Quick Draw activates, we are +1.
+        # We check both to allow probability stacking (approx 44% total chance).
+        if ability == 'Quick Draw':
+            if hash(str(state.get_hash()) + 'qd' + mon.get('species', '')) % 100 < 30:
+                mon['turn_priority_mod'] = 1
+                log.append(f"  Quick Draw let {mon.get('species')} move first!")
+
+        # 3. Custap Berry
+        if item == 'Custap Berry':
+            threshold = 0.25
+            if ability == 'Gluttony': threshold = 0.5
+            if mon.get('current_hp') <= mon.get('max_hp', 1) * threshold:
+                mon['turn_priority_mod'] = 1
+                mon['item'] = None
+                log.append(f"  {mon.get('species')}'s Custap Berry activated!")
+                log.append(f"  Custap Berry let {mon.get('species')} move first!")
