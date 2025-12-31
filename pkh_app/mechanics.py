@@ -57,10 +57,12 @@ class Mechanics:
 
         # Items
         if not field or field.get('magic_room', 0) <= 0:
-             rich_item = mon.get('_rich_item', {})
-             item_mod = rich_item.get(key)
-             if isinstance(item_mod, (int, float)):
-                 val *= item_mod
+             rich_item = mon.get('_rich_item')
+             if rich_item:
+                 item_mod = rich_item.get(key)
+                 if isinstance(item_mod, (int, float)):
+                     val *= item_mod
+
         
         # 3. Conditional Rich Modifiers (Ailment-based)
         status = mon.get('status')
@@ -534,8 +536,8 @@ class Mechanics:
                              log.append(f"  {mon.get('species')} restored HP (+{delta})")
 
             # Item Residual
-            it_rich = mon.get('_rich_item', {})
-            it_hr = it_rich.get('healRatio')
+            it_rich = mon.get('_rich_item')
+            it_hr = it_rich.get('healRatio') if it_rich else None
             if it_hr and isinstance(it_hr, (list, tuple)) and len(it_hr) >= 2:
                 factor = it_hr[0] / it_hr[1]
                 if item == 'Black Sludge' and 'Poison' not in mon.get('types', []):
@@ -714,11 +716,14 @@ class Mechanics:
         # but let's ensure it checks the move's secondary property.
         
         # Item
-        it = mon.get('_rich_item', {})
-        val = it.get(key)
-        if val is not None and isinstance(val, (int, float)):
-             if Mechanics.test_modifier_condition(it, mon, move_data, field, target):
-                  mod *= val
+        # Item
+        it = mon.get('_rich_item')
+        if it:
+             val = it.get(key)
+             if val is not None and isinstance(val, (int, float)):
+                  if Mechanics.test_modifier_condition(it, mon, move_data, field, target):
+                       mod *= val
+
         
         # 3. Ally Modifiers (Phase 2 Awareness)
         if field and field.get('allies'):

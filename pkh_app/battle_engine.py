@@ -138,6 +138,13 @@ class BattleEngine:
     def get_state_log_lines(self, state: BattleState) -> List[str]:
         """Returns a list of strings representing the detailed state for logging."""
         lines = []
+        
+        # Active Pokemon Info
+        p = state.player_active
+        a = state.ai_active
+        lines.append(f"  Player Active: {p['name']} ({p['current_hp']}/{p['max_hp']} HP)")
+        lines.append(f"  AI Active:     {a['name']} ({a['current_hp']}/{a['max_hp']} HP)")
+
         fields = state.fields
         field_info = []
         
@@ -3398,9 +3405,17 @@ class BattleEngine:
                  is_hazard = msc in ['spikes', 'toxicspikes', 'stealthrock', 'stickyweb']
                  if is_hazard:
                       opp_side = 'ai' if attacker_side == 'player' else 'player'
-                      hazards = state.fields.setdefault('hazards', {}).setdefault(opp_side, {})
-                      hazards[msc] = hazards.get(msc, 0) + 1
-                      log.append(f"  Set {msc} on {opp_side} side!")
+                      hazards = state.fields.setdefault('hazards', {}).setdefault(opp_side, [])
+                      
+                      h_map = {
+                          'spikes': 'Spikes',
+                          'toxicspikes': 'Toxic Spikes',
+                          'stealthrock': 'Stealth Rock',
+                          'stickyweb': 'Sticky Web'
+                      }
+                      h_name = h_map.get(msc, msc.title())
+                      hazards.append(h_name)
+                      log.append(f"  Set {h_name} on {opp_side} side!")
                  else:
                       side_to_apply = attacker_side
                       if msc in ['reflect', 'lightscreen', 'auroraveil']: side_to_apply = attacker_side
@@ -3818,6 +3833,7 @@ class BattleEngine:
              chance_mult = 2 if attacker.get('ability') == 'Serene Grace' else 1
              
              for sec in secondaries:
+                  if not isinstance(sec, dict): continue
                   chance = sec.get('chance', 100) / 100
                   if random.random() < (chance * chance_mult):
                        if behind_sub and not move_bypasses_sub:
