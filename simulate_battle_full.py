@@ -198,6 +198,80 @@ def main():
                 stage = stages.get(s, 0)
                 stat_str.append(f"{s.upper()}:{val} ({base}{'+' if stage >= 0 else ''}{stage})")
             dual_print(f"  {side} Stats: {' '.join(stat_str)}")
+            
+            # Display status condition
+            status = mon.get('status')
+            if status:
+                status_map = {
+                    'par': 'PAR (Paralyzed)',
+                    'psn': 'PSN (Poisoned)',
+                    'tox': 'TOX (Badly Poisoned)',
+                    'brn': 'BRN (Burned)',
+                    'frz': 'FRZ (Frozen)',
+                    'slp': 'SLP (Asleep)'
+                }
+                status_display = status_map.get(status, status.upper())
+                dual_print(f"  {side} Status: {status_display}")
+            
+            # Display volatile status
+            volatiles = mon.get('volatiles', [])
+            volatile_info = []
+            
+            # Focus Energy / higher crit
+            if 'focusenergy' in volatiles:
+                volatile_info.append("FocusEnergy(+2crit)")
+            
+            # Confusion
+            if 'confusion' in volatiles:
+                confusion_turns = mon.get('confusion_turns', 0)
+                volatile_info.append(f"Confused({confusion_turns}turns)")
+            
+            # Sleep counter
+            if mon.get('status') == 'slp':
+                sleep_turns = mon.get('status_counter', 0)
+                volatile_info.append(f"Sleep({sleep_turns}turns)")
+            
+            # Substitute
+            if 'substitute' in volatiles:
+                sub_hp = mon.get('substitute_hp', 0)
+                volatile_info.append(f"Substitute({sub_hp}HP)")
+            
+            # Leech Seed
+            if 'leechseed' in volatiles:
+                volatile_info.append("LeechSeed")
+            
+            # Curse (Ghost-type)
+            if 'curse' in volatiles:
+                volatile_info.append("Cursed")
+            
+            # Taunt
+            if 'taunt' in volatiles:
+                taunt_turns = mon.get('taunt_turns', 0)
+                volatile_info.append(f"Taunted({taunt_turns}turns)")
+            
+            # Encore
+            if 'encore' in volatiles:
+                encore_turns = mon.get('encore_turns', 0)
+                volatile_info.append(f"Encored({encore_turns}turns)")
+            
+            # Protection
+            if any(v in volatiles for v in ['protect', 'detect', 'kingshield', 'banefulbunker']):
+                protect_count = mon.get('protect_counter', 0)
+                volatile_info.append(f"Protected(x{protect_count})")
+            
+            # Charged (for Charge move)
+            if 'charge' in volatiles:
+                volatile_info.append("Charged")
+            
+            # Other notable volatiles
+            other_vols = [v for v in volatiles if v not in ['focusenergy', 'confusion', 'substitute', 
+                         'leechseed', 'curse', 'taunt', 'encore', 'protect', 'detect', 'charge',
+                         'kingshield', 'banefulbunker', 'flinch']]
+            for v in other_vols:
+                volatile_info.append(v.capitalize())
+            
+            if volatile_info:
+                dual_print(f"  {side} Volatiles: {', '.join(volatile_info)}")
         
         # Random Player Action
         moves = state.player_active.get('moves', [])
