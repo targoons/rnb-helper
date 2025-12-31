@@ -209,10 +209,12 @@ def main():
             active_effects = []
             
             # Hazards
-            if side_hazards.get('stealth_rock'): active_effects.append("Stealth Rock")
-            if side_hazards.get('spikes'): active_effects.append(f"Spikes(x{side_hazards['spikes']})")
-            if side_hazards.get('toxic_spikes'): active_effects.append(f"Toxic Spikes(x{side_hazards['toxic_spikes']})")
-            if side_hazards.get('sticky_web'): active_effects.append("Sticky Web")
+            if 'Stealth Rock' in side_hazards: active_effects.append("Stealth Rock")
+            spikes = side_hazards.count('Spikes')
+            if spikes > 0: active_effects.append(f"Spikes(x{spikes})")
+            tspikes = side_hazards.count('Toxic Spikes')
+            if tspikes > 0: active_effects.append(f"Toxic Spikes(x{tspikes})")
+            if 'Sticky Web' in side_hazards: active_effects.append("Sticky Web")
             
             # Screens
             if side_screens.get('reflect'): active_effects.append("Reflect")
