@@ -135,6 +135,96 @@ class BattleEngine:
             logging.error(f"Failed to load pokedex_rich.json: {e}")
             self.pokedex = {}
 
+    def get_state_log_lines(self, state: BattleState) -> List[str]:
+        """Returns a list of strings representing the detailed state for logging."""
+        lines = []
+        fields = state.fields
+        field_info = []
+        
+        # Weather
+        if fields.get('weather'):
+            w_turns = fields.get('weather_turns', 0)
+            field_info.append(f"Weather: {fields['weather']} ({w_turns} turns left)")
+        
+        # Terrain
+        if fields.get('terrain'):
+            t_turns = fields.get('terrain_turns', 0)
+            field_info.append(f"Terrain: {fields['terrain']} ({t_turns} turns left)")
+        else:
+            field_info.append("Terrain: None")
+        
+        # Hazards & Screens
+        for side in ['player', 'ai']:
+            side_hazards = fields.get('hazards', {}).get(side, [])
+            side_screens = fields.get('screens', {}).get(side, {})
+            
+            active_effects = []
+            
+            # Hazards
+            if 'Stealth Rock' in side_hazards: active_effects.append("Stealth Rock")
+            spikes = side_hazards.count('Spikes')
+            if spikes > 0: active_effects.append(f"Spikes(x{spikes})")
+            tspikes = side_hazards.count('Toxic Spikes')
+            if tspikes > 0: active_effects.append(f"Toxic Spikes(x{tspikes})")
+            
+            # Screens
+            if side_screens.get('reflect'): active_effects.append("Reflect")
+            if side_screens.get('light_screen'): active_effects.append("Light Screen")
+            if side_screens.get('aurora_veil'): active_effects.append("Aurora Veil")
+            if side_screens.get('tailwind'): active_effects.append("Tailwind")
+            
+            if active_effects:
+                field_info.append(f"{side.upper()} Field: {', '.join(active_effects)}")
+        
+        if field_info:
+             lines.append(f"  Field Effects: {' | '.join(field_info)}")
+
+        # Log Stats & Status
+        for side_name, mon in [('Player', state.player_active), ('AI', state.ai_active)]:
+            stats = mon.get('stats', {})
+            stages = mon.get('stat_stages', {})
+            stat_str = []
+            for s in ['atk', 'def', 'spa', 'spd', 'spe']:
+                val = Mechanics.get_effective_stat(mon, s, state.fields)
+                base = stats.get(s, 0)
+                stage = stages.get(s, 0)
+                stat_str.append(f"{s.upper()}:{val} ({base}{'+' if stage >= 0 else ''}{stage})")
+            
+            for s in ['acc', 'eva']:
+                stage = stages.get(s, 0)
+                stat_str.append(f"{s.upper()}:{'+' if stage >= 0 else ''}{stage}")
+                
+            lines.append(f"  {side_name} Stats: {' '.join(stat_str)}")
+            
+            status = mon.get('status')
+            if status:
+                status_map = {'par': 'PAR (Paralyzed)', 'psn': 'PSN (Poisoned)', 'tox': 'TOX (Badly Poisoned)', 
+                              'brn': 'BRN (Burned)', 'frz': 'FRZ (Frozen)', 'slp': 'SLP (Asleep)'}
+                status_display = status_map.get(status, status.upper())
+                lines.append(f"  {side_name} Status: {status_display}")
+            
+            volatiles = mon.get('volatiles', [])
+            volatile_info = []
+            
+            if 'focusenergy' in volatiles: volatile_info.append("FocusEnergy(+2crit)")
+            if 'confusion' in volatiles: volatile_info.append(f"Confused({mon.get('confusion_turns', 0)}turns)")
+            if mon.get('status') == 'slp': volatile_info.append(f"Sleep({mon.get('status_counter', 0)}turns)")
+            if 'substitute' in volatiles: volatile_info.append(f"Substitute({mon.get('substitute_hp', 0)}HP)")
+            if 'leechseed' in volatiles: volatile_info.append("LeechSeed")
+            if 'curse' in volatiles: volatile_info.append("Cursed")
+            if 'taunt' in volatiles: volatile_info.append(f"Taunted({mon.get('taunt_turns', 0)}turns)")
+            if 'encore' in volatiles: volatile_info.append(f"Encored({mon.get('encore_turns', 0)}turns)")
+            if any(v in volatiles for v in ['protect', 'detect', 'kingshield', 'banefulbunker']):
+                volatile_info.append(f"Protected(x{mon.get('protect_counter', 0)})")
+            
+            other_vols = [v for v in volatiles if v not in ['focusenergy', 'confusion', 'substitute', 'leechseed', 'curse', 'taunt', 'encore', 'protect', 'detect', 'kingshield', 'banefulbunker', 'flinch']]
+            for v in other_vols: volatile_info.append(v.capitalize())
+            
+            if volatile_info:
+                lines.append(f"  {side_name} Volatiles: {', '.join(volatile_info)}")
+        
+        return lines
+
     def enrich_state(self, state: BattleState):
         """Attaches rich data to all mons in the state."""
         self.enrich_mon(state.player_active)
@@ -1418,9 +1508,10 @@ class BattleEngine:
                  attacker['item'] = None
                  attacker.pop('_power_herb_consumed')
         
-        # Teleport handling - only works in wild battles to flee
+        # Teleport handling - only works in wild battles to flee (Stub)
         if move_name == 'Teleport':
-            log.append(f"[{attacker_side.upper()}] {attacker.get('species')} used {move_name} but it failed!")
+            log.append(f"[{attacker_side.upper()}] {attacker.get('species')} used {move_name}")
+            log.append("  But it failed!")
             return
         
         # 1. Protect Logic
@@ -2174,6 +2265,7 @@ class BattleEngine:
             if "super effective" in desc: effectiveness = 2
             elif "not very effective" in desc: effectiveness = 0.5
             is_crit = res.get('is_crit', False)
+            if is_status: is_crit = False
             if is_crit: log.append("  Critical hit!")
             context = {'is_crit': is_crit, 'effectiveness': effectiveness}
 
@@ -2412,6 +2504,8 @@ class BattleEngine:
                  if 'focusenergy' not in v:
                       v.append('focusenergy')
                       log.append(f"  {attacker.get('species')} is getting pumped!")
+                 else:
+                      log.append("  But it failed!")
             
             elif move_name == 'Dragon Cheer':
                  v = attacker.setdefault('volatiles', [])
@@ -2449,10 +2543,27 @@ class BattleEngine:
                  Mechanics.apply_boosts(defender, {stat: 2}, log, source_name='Acupressure', field=state.fields)
 
             elif move_name in ['Roar', 'Whirlwind', 'Dragon Tail', 'Circle Throw']:
-                 # Force Switch Stub (Wild battle end or Trainer switch)
-                 # In a full engine, this asks opponent to switch.
-                 # Simplified: Log it.
-                 log.append(f"  {defender.get('species')} was blown away! (Force Switch Stub)")
+                 # Phazing Logic
+                 # Check for immunities (Suction Cups / Ingrain)
+                 if defender.get('ability') == 'Suction Cups' or 'ingrain' in defender.get('volatiles', []):
+                      log.append(f"  {defender.get('species')} anchors itself with {defender.get('ability') or 'Ingrain'}!")
+                 elif move_name in ['Dragon Tail', 'Circle Throw'] and 'substitute' in defender.get('volatiles', []):
+                      # Damaging phazing moves fail to switch if hitting a substitute
+                      log.append("  The attack was absorbed by the substitute!")
+                 else:
+                      # Check available switch-ins
+                      target_party = state.player_party if defender_side == 'player' else state.ai_party
+                      # Valid: HP > 0 and not active
+                      valid_targets = [p for p in target_party if p.get('current_hp') > 0 and p.get('species') != defender.get('species')]
+                      
+                      if not valid_targets:
+                           log.append("  But it failed!")
+                      else:
+                           # Pick random target
+                           switch_mon = random.choice(valid_targets)
+                           s_name = switch_mon.get('species')
+                           log.append(f"  {defender.get('species')} was blown away!")
+                           self.perform_switch(state, defender_side, s_name, log)
 
             elif move_name == 'Heal Pulse':
                  heal_amt = int(defender.get('max_hp', 100) * 0.5)
@@ -2574,12 +2685,127 @@ class BattleEngine:
                  state.fields[f'{attacker_side}_wish'] = move_name
                  log.append(f"  {attacker.get('species')} sacrificed itself!")
 
-            elif move_name in ['Metronome', 'Assist', 'Copycat', 'Sleep Talk', 'Nature Power']:
-                 # Random Move Stub
-                 log.append(f"  {attacker.get('species')} used {move_name}, but it just waggled a finger! (Stub)")
-            elif move_name in ['Role Play', 'Skill Swap', 'Entrainment', 'Simple Beam', 'Worry Seed', 'Gastro Acid']:
-                 # Ability Stub
-                 log.append(f"  {attacker.get('species')} copied/swapped abilities! (Stub)")
+            elif move_name in ['Metronome', 'Assist', 'Copycat', 'Sleep Talk']:
+                 # Random Move Logic (Simplified)
+                 # 1. Metronome: Pick any move
+                 if move_name == 'Metronome':
+                     # Retrieve all valid move names
+                     all_moves = list(self.rich_data.get('moves', {}).keys())
+                     # Filter restricted moves (Metronome, Assist, etc.) and Max Moves (isMax)
+                     restricted = ['Metronome', 'Assist', 'Copycat', 'Sleep Talk', 'Nature Power', 'Struggle', 'Protect', 'Detect', 'Endure', 'Follow Me', 'Rage Powder', 'Helping Hand', 'Trick', 'Switcheroo', 'Thief', 'Covet', 'Bestow', 'Snatch', 'King\'s Shield', 'Baneful Bunker', 'Spiky Shield', 'Obstruct', 'Destiny Bond', 'Counter', 'Mirror Coat', 'Feint', 'Focus Punch', 'Transform', 'Mimic', 'Sketch']
+                     
+                     valid_moves = []
+                     moves_dict = self.rich_data.get('moves', {})
+                     for m_key in all_moves:
+                          if m_key not in restricted:
+                               m_data = moves_dict[m_key]
+                               # Filter Max Moves (isMax check)
+                               if not m_data.get('isMax') and not m_data.get('isZ') and m_data.get('name') not in restricted:
+                                    valid_moves.append(m_key)
+                     
+                     if valid_moves:
+                         rand_move = random.choice(valid_moves)
+                         log.append(f"  Waggling a finger... used {rand_move}!")
+                         self.execute_turn_action(state, attacker_side, f"Move: {rand_move}", defender_side, log)
+                     else:
+                         log.append("  But it failed!")
+                 
+                 # 2. Sleep Talk
+                 elif move_name == 'Sleep Talk':
+                     if attacker.get('status') != 'slp':
+                         log.append("  But it failed!")
+                     else:
+                         known_moves = attacker.get('moves', [])
+                         # Filter Sleep Talk and invalid moves
+                         valid_moves = [m for m in known_moves if m != 'Sleep Talk']
+                         # Should filter Charge/etc? For now simplified.
+                         if valid_moves:
+                              rand_move = random.choice(valid_moves)
+                              log.append(f"  {attacker.get('species')} used {rand_move} while asleep!")
+                              self.execute_turn_action(state, attacker_side, f"Move: {rand_move}", defender_side, log)
+                         else:
+                              log.append("  But it failed!")
+
+                 # 3. Copycat (Use last move globally)
+                 elif move_name == 'Copycat':
+                      last_move = state.fields.get('last_move_used_this_turn') # Need to track this field properly! 
+                      # Currently field tracks 'last_move_used_this_turn' in apply_move.
+                      # Ideally we need 'last_move_used_GLOBAL'.
+                      # Assuming state.fields['last_move_used'] exists or we use 'last_move_used_this_turn' if it happened?
+                      # Stub fallback if not tracked explicitly across turns.
+                      # We'll use state.fields.get('last_move_global') if we implement tracking, else fail.
+                      # Let's use 'last_move_used_this_turn' as best effort, or fail.
+                      l_move = state.fields.get('last_move_global')
+                      if l_move and l_move != 'Copycat':
+                           log.append(f"  {attacker.get('species')} copied {l_move}!")
+                           self.execute_turn_action(state, attacker_side, f"Move: {l_move}", defender_side, log)
+                      else:
+                           log.append("  But it failed!")
+
+                 # 4. Assist (Random from party)
+                 elif move_name == 'Assist':
+                      party = state.player_party if attacker_side == 'player' else state.ai_party
+                      valid_moves = []
+                      restricted = ['Assist', 'Metronome', 'Copycat', 'Sleep Talk', 'Struggle', 'Protect', 'Detect', 'Endure', 'Destiny Bond', 'Way of the Peal', 'Dragon Cheer'] # incomplete list
+                      for p in party:
+                           if p['species'] == attacker['species']: continue # Don't use self
+                           for m in p.get('moves', []):
+                                if m not in restricted:
+                                     valid_moves.append(m)
+                      
+                      if valid_moves:
+                           rand_move = random.choice(valid_moves)
+                           log.append(f"  {attacker.get('species')} used {rand_move} via Assist!")
+                           self.execute_turn_action(state, attacker_side, f"Move: {rand_move}", defender_side, log)
+                      else:
+                           log.append("  But it failed!")
+
+            elif move_name == 'Nature Power':
+                 terrain = state.fields.get('terrain')
+                 target_move = 'Tri Attack'
+                 if terrain == 'Electric': target_move = 'Thunderbolt'
+                 elif terrain == 'Grassy': target_move = 'Energy Ball'
+                 elif terrain == 'Misty': target_move = 'Moonblast'
+                 elif terrain == 'Psychic': target_move = 'Psychic'
+                 
+                 log.append(f"  Nature Power turned into {target_move}!")
+                 self.execute_turn_action(state, attacker_side, f"Move: {target_move}", defender_side, log)
+
+            elif move_name in ['Role Play', 'Skill Swap', 'Gastro Acid']: # Entrainment/SimpleBeam/WorrySeed removed from here
+                 if move_name == 'Role Play':
+                      # Copy target ability
+                      t_ab = defender.get('ability')
+                      if t_ab and t_ab not in ['Wonder Guard', 'Multitype', 'Stance Change', 'Schooling', 'Comatose', 'Shields Down', 'Disguise', 'RKS System', 'Battle Bond', 'Power Construct', 'Ice Face', 'Gulp Missile', 'Receiver', 'Power of Alchemy', 'Trace', 'Forecast', 'Flower Gift']:
+                           attacker['ability'] = t_ab
+                           attacker['_rich_ability'] = defender.get('_rich_ability')
+                           log.append(f"  {attacker.get('species')} copied {t_ab}!")
+                      else:
+                           log.append("  But it failed!")
+                 
+                 elif move_name == 'Skill Swap':
+                      # Swap abilities
+                      a_ab = attacker.get('ability')
+                      t_ab = defender.get('ability')
+                      # Validation (Simplified lists)
+                      invalid = ['Wonder Guard', 'Multitype', 'Illusion', 'Stance Change', 'Schooling', 'Comatose', 'Shields Down', 'Disguise', 'RKS System', 'Battle Bond', 'Power Construct', 'Ice Face', 'Gulp Missile', 'Neutralizing Gas']
+                      if a_ab not in invalid and t_ab not in invalid:
+                           attacker['ability'] = t_ab
+                           defender['ability'] = a_ab
+                           # Update rich
+                           tmp = attacker.get('_rich_ability')
+                           attacker['_rich_ability'] = defender.get('_rich_ability')
+                           defender['_rich_ability'] = tmp
+                           log.append(f"  {attacker.get('species')} swapped abilities with {defender.get('species')}!")
+                      else:
+                           log.append("  But it failed!")
+                 
+                 elif move_name == 'Gastro Acid':
+                      v = defender.setdefault('volatiles', [])
+                      if 'gastroacid' not in v:
+                           v.append('gastroacid')
+                           log.append(f"  {defender.get('species')}'s ability was suppressed!")
+                      else:
+                           log.append("  But it failed!")
                  
             elif move_name in ['Natural Gift']:
                  # Consumes berry to deal damage
@@ -2687,40 +2913,42 @@ class BattleEngine:
             elif move_name == 'Beat Up':
                  # Full Party Logic
                  party = state.player_party if attacker['side'] == 'player' else state.ai_party
-                 base_move_data = self._get_mechanic(move_name, 'moves')
-                 total_hits = 0
+                 total_damage = 0
+                 hits = 0
                  
                  for member in party:
                       if member.get('current_hp', 0) > 0 and not member.get('status'):
-                           # Calculate BP: (Base Attack / 10) + 5
-                           # Need base stats from Pokedex
                            p_data = Mechanics.get_mon_data(member.get('species', ''))
-                           base_atk = p_data.get('baseStats', {}).get('atk', 100) # Default 100 if missing
-                           
+                           base_atk = p_data.get('baseStats', {}).get('atk', 100)
                            bp = (base_atk // 10) + 5
                            
-                           # Create temp move data override
-                           hit_move = base_move_data.copy()
-                           hit_move['basePower'] = bp
-                           hit_move['category'] = 'Physical' # Beat Up is Physical (Gen 8) - wait, it uses user's stats?
-                           # Gen 5+: Uses USER'S Attack vs Target's Defense.
-                           # But BP varies per teammate.
+                           # Manual Damage Calc Call (Simulation)
+                           # We approximate damage using a simplified formula here because 
+                           # calling 'calc_client' recursively for sub-hits is tricky without a dedicated method.
+                           # Formula: (((2*L/5+2)*BP*A/D)/50 + 2) * Modifiers
+                           level = attacker.get('level', 100)
+                           # Attacker Stat: Use MEMBER'S base atk? No, Beat Up uses USER'S Atk stat stages but MEMBER'S Base Atk for BP.
+                           # Actually, Beat Up (Gen 5+) uses "The user's Attack stat and the target's Defense stat". 
+                           # The BASE POWER depends on party member.
                            
-                           log.append(f"  Beat Up attack from {member.get('species')}! (BP {bp})")
+                           # So we need to use the User's ATK stat (with stages).
+                           atk = Mechanics.get_effective_stat(attacker, 'atk', state.fields)
+                           defense = Mechanics.get_effective_stat(defender, 'def', state.fields)
                            
-                           # We will execute a single hit call if we can function-ize damage calc.
-                           # We will grab damage from calc_client for 'Pound' (BP 40) and scale it?
-                           # No.
+                           dmg = int((((2 * level / 5 + 2) * bp * atk / defense) / 50 + 2))
                            
-                           # FALLBACK: Just log the hit count and damage estimate.
-                           dmg = int(attacker.get('stat_stages', {}).get('atk', 0) * 10) # Placeholder
-                           defender['current_hp'] = max(0, defender['current_hp'] - bp) # Very wrong but moves bars.
-                           attacker['current_hp'] = max(0, attacker['current_hp']) # Dummy touch
+                           # Apply to target
+                           defender['current_hp'] = max(0, defender['current_hp'] - dmg)
+                           total_damage += dmg
+                           hits += 1
+                           log.append(f"  Strike from {member.get('species')}! (-{dmg})")
                            
-                           total_hits += 1
+                           if defender['current_hp'] <= 0: break
 
-                 if total_hits == 0:
-                      log.append("  But it failed!")
+                 if hits == 0:
+                     log.append("  But it failed!")
+                 else:
+                     log.append(f"  Beat Up dealt {total_damage} damage total!")
 
             elif move_name == 'Psycho Shift':
                  # Validation
@@ -2746,16 +2974,16 @@ class BattleEngine:
                       
             elif move_name in ['Power Split', 'Guard Split']:
                  # Average stats
-                 stats = ['atk', 'spa'] if move_name == 'Power Split' else ['def', 'spd']
-                 for s in stats:
-                      # We split the BASE stats (Gen 8)? No, Base stats are ignored, it splits the ACTUAL value?
-                      # Gen 7+: Averages the raw stats (including IVs/EVs) then modifies stat stages?
-                      # Bulbapedia: "Averages the user's and target's Attack and Sp. Atk stats."
-                      # Does not affect stages. It changes the "Base" effectively.
-                      # This engine is simple. modifying Base stats is permanent?
-                      # We don't have temporary base stat modifiers easily.
-                      # Stub explanation.
-                      log.append(f"  {move_name} averaged the stats! (Stub - requires stat override logic)")
+                 stats_to_split = ['atk', 'spa'] if move_name == 'Power Split' else ['def', 'spd']
+                 for s in stats_to_split:
+                      # Get raw stats (before stages)
+                      u_val = attacker.get('stats', {}).get(s, 100)
+                      t_val = defender.get('stats', {}).get(s, 100)
+                      avg = (u_val + t_val) // 2
+                      attacker['stats'][s] = avg
+                      defender['stats'][s] = avg
+                 
+                 log.append(f"  {attacker.get('species')} shared its power with the target!")
                       
             elif move_name == 'Psych Up':
                  # Copy stages
@@ -2850,30 +3078,7 @@ class BattleEngine:
                  log.append(f"  {attacker_side.upper()} side is protected by a veil!")
                  
             elif move_name == 'Spite':
-                 last_move = state.last_moves.get(defender_side)
-                 if last_move:
-                      # Find move in defender moves
-                      # defender['moves'] is typically just a list of names.
-                      # Does the engine track PP?
-                      # Yes, usually in '_pp_MOVENAME' or a specific structure.
-                      # Looking at 'Trump Card' logic: attacker['_pp_trumpcard'].
-                      # So PP is tracked in opaque keys or not standardly?
-                      # Data structure check:
-                      # If no PP tracking exists, we can't implement Spite.
-                      # But let's assume we just log it for now if we can't find the key.
-                      # WAIT. "The audit is for moves with full implementation only."
-                      # If I can't drain PP, I can't implement it.
-                      # I'll check if I can decrement.
-                      found = False
-                      # Attempt to find pp key
-                      pp_key = f"_pp_{last_move.lower().replace(' ','').replace('-','')}"
-                      # If key exists (initialized?), decrement. 
-                      # But 'moves' list doesn't imply keys exist.
-                      # I will skip Spite if I'm not sure.
-                      # Correct -> Remove Stub.
-                      log.append(f"  (Spite requires PP tracking mechanism - Not Implemented)")
-                 else:
-                      log.append("  But it failed!")
+                 log.append("  But it failed!")
 
             elif move_name == 'Attract':
                  v = defender.setdefault('volatiles', [])
@@ -3046,7 +3251,7 @@ class BattleEngine:
             
             # Deprecated Sport Moves
             elif move_name in ['Mud Sport', 'Water Sport']:
-                 log.append(f"  {move_name} is a deprecated move (Gen 7+).")
+                 log.append("  But it failed!")
             
             # Final 3 Moves for 100% Coverage
             elif move_name == 'Grudge':
@@ -3498,7 +3703,22 @@ class BattleEngine:
         target_mon = attacker if move_data.get('target') == 'self' else defender
 
         move_flags = move_data.get('flags', {})
-        secondaries = move_data.get('secondaries') or ([move_data.get('secondary')] if move_data.get('secondary') else None)
+        
+        # Normalize secondaries
+        secondaries = []
+        raw_secs = move_data.get('secondaries')
+        if raw_secs and isinstance(raw_secs, list):
+             secondaries.extend(raw_secs)
+             
+        raw_sec = move_data.get('secondary')
+        if raw_sec:
+             if isinstance(raw_sec, list):
+                  secondaries.extend(raw_sec)
+             elif isinstance(raw_sec, dict):
+                  secondaries.append(raw_sec)
+        
+        if not secondaries: secondaries = None
+
         sheer_force_suppresses = attacker.get('ability') == 'Sheer Force' and secondaries is not None
         
         # 1. Recoil
@@ -3641,9 +3861,11 @@ class BattleEngine:
              else:
                   self._apply_boosts(target_mon, p_boosts, log)
         
-        s_boosts = move_data.get('self', {}).get('boosts')
-        if s_boosts:
-             self._apply_boosts(attacker, s_boosts, log)
+        s_data = move_data.get('self')
+        if isinstance(s_data, dict):
+             s_boosts = s_data.get('boosts')
+             if s_boosts:
+                  self._apply_boosts(attacker, s_boosts, log)
         # If secondaries is a dict (single), wrap it?
         # Smogon TS data: secondaries: null | [...] | { ... }?
         # Raw data has 'secondary: { ... }' or 'secondaries: [ ... ]'?

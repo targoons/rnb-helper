@@ -59,28 +59,28 @@ def create_party_with_engine(engine, is_player=True):
     p = []
     if is_player:
         # Player Team
-         p.append(make_mon(1, 'Adams', 'Growlithe', 'Intimidate', 'Adamant', (38,38), 'Oran Berry', (26,18,21,19,21), (26,22,23,19,16,26), ['Flame Wheel', 'Bite', 'Covet', 'Odor Sleuth']))
-         p.append(make_mon(2, 'Q.Adams', 'Rookidee', 'Keen Eye', 'Impish', (33,33), 'Oran Berry', (19,16,11,15,21), (28,19,2,14,20,18), ['Peck', 'Leer', 'Fury Attack', 'Sand Attack']))
-         p.append(make_mon(3, 'Jefferson', 'Gossifleur', 'Cotton Down', 'Modest', (33,33), 'Oran Berry', (14,22,17,20,9), (12,22,18,10,21,16), ['Magical Leaf', 'Sing', 'Rapid Spin', 'Sweet Scent']))
-         p.append(make_mon(4, 'Madison', 'Surskit', 'Swift Swim', 'Calm', (34,34), 'Oran Berry', (12,14,19,20,24), (16,17,19,15,30,26), ['Bubble', 'Quick Attack', 'Sweet Scent', 'Bubble Beam']))
-         p.append(make_mon(5, 'Monroe', 'Zigzagoon', 'Gluttony', 'Docile', (33,33), 'Oran Berry', (15,18,12,17,20), (30,30,2,22,7,16), ['Tackle', 'Baby Doll Eyes', 'Rock Smash', 'Snarl']))
+         p.append(make_mon(1, 'Adams', 'Growlithe', 'Intimidate', 'Hardy', (38,38), 'Oran Berry', (25,19,25,20,23), (31,31,31,31,31,31), ['Flame Wheel', 'Bite', 'Covet', 'Odor Sleuth']))
+         p.append(make_mon(2, 'Q.Adams', 'Rookidee', 'Keen Eye', 'Hardy', (34,34), 'Oran Berry', (20,17,16,17,22), (31,31,31,31,31,31), ['Peck', 'Leer', 'Fury Attack', 'Sand Attack']))
+         p.append(make_mon(3, 'Jefferson', 'Gossifleur', 'Cotton Down', 'Hardy', (35,35), 'Oran Berry', (18,23,18,23,11), (31,31,31,31,31,31), ['Magical Leaf', 'Sing', 'Rapid Spin', 'Sweet Scent']))
+         p.append(make_mon(4, 'Madison', 'Surskit', 'Swift Swim', 'Hardy', (35,35), 'Oran Berry', (15,16,20,21,24), (31,31,31,31,31,31), ['Bubble', 'Quick Attack', 'Sweet Scent', 'Bubble Beam']))
+         p.append(make_mon(5, 'Monroe', 'Zigzagoon', 'Gluttony', 'Hardy', (34,34), 'Oran Berry', (15,18,15,18,23), (31,31,31,31,31,31), ['Tackle', 'Baby Doll Eyes', 'Rock Smash', 'Snarl']))
          # Zigzagoon might be Galarian in the Pokedex, we'll see what the engine returns. If standard Zigzagoon is Normal, fine.
          
-         p.append(make_mon(6, 'Washington', 'Turtwig', 'Shell Armor', 'Adamant', (37,37), 'Oran Berry', (27,24,14,21,15), (31,31,6,31,29,21), ['Bite', 'Growl', 'Absorb', 'Confide']))
+         p.append(make_mon(6, 'Washington', 'Turtwig', 'Shell Armor', 'Hardy', (38,38), 'Oran Berry', (25,24,19,21,16), (31,31,31,31,31,31), ['Bite', 'Growl', 'Absorb', 'Confide']))
     else:
         # AI Team
         # 1. Machop (Fighting)
-        p.append(make_mon(1, 'Champ', 'Machop', 'Guts', 'Adamant', (35,35), 'Oran Berry', (25,15,10,15,15), (31,31,31,31,31,31), ['Karate Chop', 'Leer', 'Focus Energy', 'Low Kick']))
+        p.append(make_mon(1, 'Champ', 'Machop', 'Guts', 'Hardy', (42,42), 'Oran Berry', (27,20,17,17,17), (31,31,31,31,31,31), ['Karate Chop', 'Leer', 'Focus Energy', 'Low Kick']))
         # 2. Geodude (Rock/Ground)
-        p.append(make_mon(2, 'Rocky', 'Geodude', 'Sturdy', 'Impish', (30,30), 'Oran Berry', (22,30,10,10,10), (31,31,31,31,31,31), ['Tackle', 'Defense Curl', 'Rock Throw', 'Mud Sport']))
+        p.append(make_mon(2, 'Rocky', 'Geodude', 'Sturdy', 'Hardy', (35,35), 'Oran Berry', (27,32,15,15,13), (31,31,31,31,31,31), ['Tackle', 'Defense Curl', 'Rock Throw', 'Mud Sport']))
         # 3. Abra (Psychic)
-        p.append(make_mon(3, 'Brainy', 'Abra', 'Synchronize', 'Timid', (25,25), 'Oran Berry', (10,10,30,15,30), (31,31,31,31,31,31), ['Teleport', 'Hidden Power', 'Flash', 'Charge Beam']))
+        p.append(make_mon(3, 'Brainy', 'Abra', 'Synchronize', 'Hardy', (31,31), 'Oran Berry', (13,12,33,21,30), (31,31,31,31,31,31), ['Teleport', 'Hidden Power', 'Flash', 'Charge Beam']))
         # 4. Gastly (Ghost)
-        p.append(make_mon(4, 'Spook', 'Gastly', 'Levitate', 'Modest', (25,25), 'Oran Berry', (10,10,30,10,25), (31,31,31,31,31,31), ['Lick', 'Hypnosis', 'Mean Look', 'Spite']))
+        p.append(make_mon(4, 'Spook', 'Gastly', 'Levitate', 'Hardy', (32,32), 'Oran Berry', (17,15,32,17,27), (31,31,31,31,31,31), ['Lick', 'Hypnosis', 'Mean Look', 'Spite']))
         # 5. Buizel (Water)
-        p.append(make_mon(5, 'Jet', 'Buizel', 'Swift Swim', 'Jolly', (30,30), 'Oran Berry', (20,15,15,15,28), (31,31,31,31,31,31), ['Aqua Jet', 'Quick Attack', 'Growl', 'Water Gun']))
+        p.append(make_mon(5, 'Jet', 'Buizel', 'Swift Swim', 'Hardy', (38,38), 'Oran Berry', (24,17,23,15,29), (31,31,31,31,31,31), ['Aqua Jet', 'Quick Attack', 'Growl', 'Water Gun']))
         # 6. Stunky (Dark/Poison)
-        p.append(make_mon(6, 'Smelly', 'Stunky', 'Stench', 'Adamant', (35,35), 'Oran Berry', (22,18,10,18,20), (31,31,31,31,31,31), ['Scratch', 'Focus Energy', 'Poison Gas', 'Screech']))
+        p.append(make_mon(6, 'Smelly', 'Stunky', 'Stench', 'Hardy', (40,40), 'Oran Berry', (23,20,18,18,26), (31,31,31,31,31,31), ['Scratch', 'Focus Energy', 'Poison Gas', 'Screech']))
     
     return p
 
@@ -195,11 +195,15 @@ def main():
         if fields.get('weather'):
             w_turns = fields.get('weather_turns', 0)
             field_info.append(f"Weather: {fields['weather']} ({w_turns} turns left)")
+        else:
+            field_info.append("Weather: None")
             
         # Terrain
         if fields.get('terrain'):
             t_turns = fields.get('terrain_turns', 0)
             field_info.append(f"Terrain: {fields['terrain']} ({t_turns} turns left)")
+        else:
+            field_info.append("Terrain: None")
             
         # Hazards & Screens
         for side in ['player', 'ai']:
@@ -238,6 +242,12 @@ def main():
                 base = stats.get(s, 0)
                 stage = stages.get(s, 0)
                 stat_str.append(f"{s.upper()}:{val} ({base}{'+' if stage >= 0 else ''}{stage})")
+            
+            # Append Accuracy / Evasion (Just stages)
+            for s in ['acc', 'eva']:
+                stage = stages.get(s, 0)
+                stat_str.append(f"{s.upper()}:{'+' if stage >= 0 else ''}{stage}")
+                
             dual_print(f"  {side} Stats: {' '.join(stat_str)}")
             
             # Display status condition

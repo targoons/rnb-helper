@@ -21,7 +21,7 @@ class Mechanics:
         stages = mon.get('stat_stages', {})
         stage = stages.get(stat_name, 0)
         
-        if stat_name in ['accuracy', 'evasion']:
+        if stat_name in ['acc', 'eva', 'accuracy', 'evasion']:
              acc_mult = [3, 4, 5, 6, 7, 8, 9]
              if stage >= 0: multiplier = acc_mult[min(6, stage)] / 3.0
              else: multiplier = 3.0 / acc_mult[min(6, abs(stage))]
@@ -128,7 +128,7 @@ class Mechanics:
              return True
              
         # 1. Accuracy Stage (Attacker)
-        acc_stage = attacker.get('stat_stages', {}).get('accuracy', 0)
+        acc_stage = attacker.get('stat_stages', {}).get('acc', 0)
         acc_mult = [3/3, 4/3, 5/3, 6/3, 7/3, 8/3, 9/3]
         if acc_stage >= 0:
              acc_mod = acc_mult[min(6, acc_stage)]
@@ -136,7 +136,7 @@ class Mechanics:
              acc_mod = 3 / (3 + abs(acc_stage)) # 3/4, 3/5...
              
         # 2. Evasion Stage (Defender)
-        eva_stage = defender.get('stat_stages', {}).get('evasion', 0)
+        eva_stage = defender.get('stat_stages', {}).get('eva', 0)
         # Apply strict rules: (Acc - Eva) is usually how it's done for stages combined?
         # Actually standard formula is: Mods * AccStage * (1/EvaStage) ?
         # No, Gen 3+ uses strict table lookups on (Acc - Eva).
@@ -350,22 +350,8 @@ class Mechanics:
             if not mon or mon.get('current_hp', 0) <= 0:
                 continue
                 
-            # 1.1 Status Residuals (Burn/Poison)
-            status = mon.get('status')
-            if status == 'brn' and mon.get('ability') != 'Magic Guard':
-                 dmg = int(mon.get('max_hp', 100) / 16)
-                 mon['current_hp'] = max(0, mon['current_hp'] - dmg)
-                 log.append(f"  {mon.get('species')} was hurt by its burn! (-{dmg})")
-            elif status == 'psn' and mon.get('ability') != 'Magic Guard':
-                 dmg = int(mon.get('max_hp', 100) / 8)
-                 mon['current_hp'] = max(0, mon['current_hp'] - dmg)
-                 log.append(f"  {mon.get('species')} was hurt by poison! (-{dmg})")
-            elif status == 'tox' and mon.get('ability') != 'Magic Guard':
-                 cnt = mon.get('toxic_counter', 1)
-                 dmg = int(mon.get('max_hp', 100) * cnt / 16)
-                 mon['current_hp'] = max(0, mon['current_hp'] - dmg)
-                 mon['toxic_counter'] = cnt + 1
-                 log.append(f"  {mon.get('species')} was hurt by its badly poison! (-{dmg})")
+            # 1.1 Status Residuals (Burn/Poison) - Handled in second loop (lines 498+) for better Ability support (Poison Heal/Heatproof)
+            # Removed duplicate block here.
 
 
             # 1.2 Volatile Residuals (Leech Seed, Aqua Ring, Ingrain)
