@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
-const { calculate, Generations, Pokemon, Move, Field } = require('@smogon/calc');
+const { calculate, Generations, Pokemon, Move, Field } = require('./runbuncalc/calc/dist');
 
 const app = express();
 const port = 3000;
@@ -45,8 +45,20 @@ try {
     SPECIES_MAP = { "1": "Bulbasaur", "25": "Pikachu" };
 }
 
+const ITEMS_MAP_PATH = path.join(__dirname, '../data/item_ids.json');
+let ITEM_IDS_MAP = {};
+try {
+    ITEM_IDS_MAP = JSON.parse(fs.readFileSync(ITEMS_MAP_PATH, 'utf8'));
+} catch (e) { }
+
 function getSpeciesName(id) {
     return SPECIES_MAP[String(id)] || "Pikachu";
+}
+
+function getItemName(id) {
+    if (typeof id === 'string') return id;
+    if (ITEM_IDS_MAP[String(id)]) return ITEM_IDS_MAP[String(id)];
+    return undefined;
 }
 
 function getMoveName(id) {
@@ -60,8 +72,43 @@ app.post('/batch-calculate', (req, res) => {
     try {
         const { attacker: attData, defender: defData, moves, field } = req.body;
 
+        // DEBUG LOGGING
+        try {
+            fs.appendFileSync('/Users/targoon/Pokemon/calc_request.log', JSON.stringify({
+                timestamp: new Date().toISOString(),
+                attacker: { name: attData.name, item: attData.item, nature: attData.nature, spa: attData.stats?.spa },
+                defender: { name: defData.name, item: defData.item, nature: defData.nature, spd: defData.stats?.spd },
+                moves,
+                field
+            }, null, 2) + "\n---\n");
+        } catch (e) { }
+
         // Gen 8 is generally safe for modern-mechanics ROM hacks (Phy/Spe split, Fairy type)
         const gen = Generations.get(8);
+
+        // PATCH: Apply Custom Moves to Gen Data directly
+        // This forces calculate() to use the updated values even if it ignores Move instance overrides
+        const toID = (text) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        for (const [cName, cData] of Object.entries(CUSTOM_MOVES)) {
+            let m = gen.moves.get(cName);
+            if (!m) m = gen.moves.get(toID(cName));
+
+            if (m) {
+                // Only patch if different to avoid log spam
+                if (cData.bp && m.basePower !== cData.bp) {
+                    console.log(`[PATCH] Patching ${cName} (BP: ${m.basePower} -> ${cData.bp})`);
+                    m.basePower = cData.bp;
+                    m.bp = m.basePower;
+                }
+                if (cData.type && m.type !== cData.type) {
+                    console.log(`[PATCH] Patching ${cName} (Type: ${m.type} -> ${cData.type})`);
+                    m.type = cData.type;
+                }
+            } else {
+                // console.log(`[PATCH] Failed to find move: ${cName}`); // Silence failure
+            }
+        }
 
         const stages = attData.statStages || attData.stat_stages;
 
@@ -107,7 +154,7 @@ app.post('/batch-calculate', (req, res) => {
             const attName = findSafeSpecies(rawAttName);
             attacker = new Pokemon(gen, attName, {
                 ability: attData.ability,
-                item: typeof attData.item === 'string' ? attData.item : undefined,
+                item: getItemName(attData.item),
                 nature: attData.nature === 'Unknown' ? 'Hardy' : attData.nature,
                 level: attData.level || 50,
                 curHP: attData.currentHp || attData.current_hp,
@@ -152,7 +199,7 @@ app.post('/batch-calculate', (req, res) => {
 
             defender = new Pokemon(gen, defName, {
                 ability: defData.ability,
-                item: typeof defData.item === 'string' ? defData.item : undefined,
+                item: getItemName(defData.item),
                 nature: defData.nature === 'Unknown' ? 'Hardy' : defData.nature,
                 level: defData.level || 50,
                 ivs: defData.ivs ? {
@@ -191,18 +238,24 @@ app.post('/batch-calculate', (req, res) => {
             if (!p) return null;
             const options = {
                 level: p.level,
-                item: p.item,
+                item: getItemName(p.item),
                 nature: p.nature,
                 ability: p.ability,
                 status: p.status,
                 ivs: p.ivs,
                 evs: p.evs,
                 curHP: p.curHP,
-                abilityOn: p.abilityOn
+                abilityOn: p.abilityOn,
+                boosts: p.boosts ? { ...p.boosts } : undefined
             };
-            if (p.boosts) options.boosts = { ...p.boosts };
-            if (p.stats) options.overrides = { stats: { ...p.stats } };
-            return new Pokemon(gen, p.name, options);
+            const newP = new Pokemon(gen, p.name, options);
+            // MANUALLY OVERRIDE STATS: Pokemon constructor re-calculates from IVs/Nature.
+            // We must force the stats we read from memory again on the clone.
+            if (p.stats) {
+                newP.stats = { ...p.stats };
+                newP.rawStats = { ...p.stats }; // Some calc versions use rawStats for base calcs
+            }
+            return newP;
         };
 
         // Calculate
@@ -218,13 +271,13 @@ app.post('/batch-calculate', (req, res) => {
                 const custom = CUSTOM_MOVES[moveName] || {};
                 const moveOptions = {};
                 if (custom.bp) moveOptions.basePower = custom.bp;
-                if (custom.type) moveOptions.type = custom.type;
-
+                if (custom.type) moveOptions.type = custom.type; // Apply custom type to moveOptions
                 const move = new Move(gen, moveName, moveOptions);
 
                 // Clone to avoid side effects
                 const att = cloneWithStats(attacker);
                 const def = cloneWithStats(defender);
+
 
                 // 1. Run & Bun Specific: Paralysis drops speed by 50% (to 0.5x) in Gen 8/modern.
                 if (att.status === 'par') att.stats.spe = Math.floor(att.stats.spe * 0.5);
@@ -239,13 +292,16 @@ app.post('/batch-calculate', (req, res) => {
                     isReflect: fData.screens && fData.screens[defenderSide] && fData.screens[defenderSide].reflect > 0,
                     isLightScreen: fData.screens && fData.screens[defenderSide] && fData.screens[defenderSide].light_screen > 0,
                     isAuroraVeil: fData.screens && fData.screens[defenderSide] && fData.screens[defenderSide].aurora_veil > 0,
-                    isStealthRock: fData.hazards && fData.hazards[defenderSide] && fData.hazards[defenderSide].includes('Stealth Rock'),
-                    spikes: fData.hazards && fData.hazards[defenderSide] ? fData.hazards[defenderSide].filter(h => h === 'Spikes').length : 0,
-                    isStickyWeb: fData.hazards && fData.hazards[defenderSide] && fData.hazards[defenderSide].includes('Sticky Web'),
+                    isSeeded: fData.seeded && fData.seeded[defenderSide],
+                    isForesight: fData.foresight && fData.foresight[defenderSide],
+                    spikes: fData.hazards && fData.hazards[defenderSide] && fData.hazards[defenderSide].includes('Spikes') ? 1 : 0, // Simplified spikes
+                    isSR: fData.hazards && fData.hazards[defenderSide] && fData.hazards[defenderSide].includes('Stealth Rock'),
                     isToxicSpikes: fData.hazards && fData.hazards[defenderSide] && fData.hazards[defenderSide].includes('Toxic Spikes'),
                 });
 
-                const result = calculate(gen, att, def, move, fObj);
+                // RunBunCalc Handles Absorb Math Logic Natively
+                result = calculate(gen, att, def, move, fObj);
+
 
                 let damageRolls = result.damage;
                 if (typeof damageRolls === 'number') damageRolls = [damageRolls];
@@ -273,15 +329,6 @@ app.post('/batch-calculate', (req, res) => {
 
                 const toID = (text) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
                 const rawMove = gen.moves.get(toID(moveName));
-
-                const fs = require('fs');
-                if (moveName === 'Confuse Ray') {
-                    try {
-                        fs.writeFileSync('/Users/targoon/Pokemon/debug_move.log', JSON.stringify({ moveObj: move, raw: rawMove }, null, 2));
-                    } catch (err) {
-                        fs.writeFileSync('/Users/targoon/Pokemon/debug_move.log', 'Error logging raw: ' + err);
-                    }
-                }
 
                 return {
                     move: moveId,

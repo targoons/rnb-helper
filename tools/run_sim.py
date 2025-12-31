@@ -9,8 +9,8 @@ import math
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
 
-from app.strategy_advisor import StrategyAdvisor
-from app.state_parser import parse_state
+from pkh_app.strategy_advisor import StrategyAdvisor
+from pkh_app.state_parser import parse_state
 
 def main():
     parser = argparse.ArgumentParser(description="Run Pokemon Battle Simulation on a state file.")

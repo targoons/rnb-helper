@@ -1,31 +1,54 @@
+#!/bin/bash
 
-# Kill existing processes (Zombie Prevention)
-pkill -9 -f "node server.js" 2>/dev/null
-pkill -9 -f "python3 app/main.py" 2>/dev/null
+PID_FILE=".pids"
 
+# Cleanup function
+cleanup() {
+    echo ""
+    echo "Stopping services..."
+    
+    # Kill PIDs from file
+    if [ -f "$PID_FILE" ]; then
+        while read -r pid; do
+            kill -9 "$pid" 2>/dev/null
+        done < "$PID_FILE"
+        rm "$PID_FILE"
+    fi
+    
+    # Fallback: Pattern matching (just in case)
+    pkill -9 -f "node server.js" 2>/dev/null
+    pkill -9 -f "pkh_app.main" 2>/dev/null
+    lsof -ti:3000 | xargs kill -9 2>/dev/null
+    
+    # Kill any children of this shell
+    pkill -P $$ 2>/dev/null
+}
 
-# Kill existing processes (Zombie Prevention)
-echo "Stopping existing services..."
-pkill -9 -f "node server.js" 2>/dev/null
-pkill -9 -f "python3 app/main.py" 2>/dev/null
-lsof -ti:3000 | xargs kill -9 2>/dev/null
-sleep 1
+# Trap signals for cleanup
+trap cleanup SIGINT SIGTERM EXIT
 
-# Start Node.js Calc Service
+# Initial Cleanup
+cleanup
+
+# 1. Start Node Service
 echo "Starting Calc Service..."
 cd calc_service
-npm install
-node server.js &
+npm install >/dev/null 2>&1
+node server.js >/dev/null &
 NODE_PID=$!
 cd ..
+echo "$NODE_PID" >> "$PID_FILE"
 
-# Wait for Node to initialize
+# Wait for Node
 sleep 2
 
-# Start Python App
+# 2. Start Python App
 echo "Starting Python App..."
 export PYTHONPATH=$PYTHONPATH:.
-python3 -m app.main
+python3 -m pkh_app.main &
+PY_PID=$!
+echo "$PY_PID" >> "$PID_FILE"
 
-# Cleanup on exit
-trap "kill $NODE_PID 2>/dev/null" EXIT
+# Wait for Python (Blocking)
+# This keeps the script alive to receive signals.
+wait $PY_PID

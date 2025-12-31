@@ -12,6 +12,283 @@ local PLAYER_PARTY_COUNT = 0x02023A95
 local partyMonSize = 100
 local terminator = 0xFF
 
+local abilityMap = {
+    [1] = "Stench", [2] = "Drizzle", [3] = "Speed Boost", [4] = "Battle Armor", [5] = "Sturdy",
+    [6] = "Damp", [7] = "Limber", [8] = "Sand Veil", [9] = "Static", [10] = "Volt Absorb",
+    [11] = "Water Absorb", [12] = "Oblivious", [13] = "Cloud Nine", [14] = "Compound Eyes", [15] = "Insomnia",
+    [16] = "Color Change", [17] = "Immunity", [18] = "Flash Fire", [19] = "Shield Dust", [20] = "Own Tempo",
+    [21] = "Suction Cups", [22] = "Intimidate", [23] = "Shadow Tag", [24] = "Rough Skin", [25] = "Wonder Guard",
+    [26] = "Levitate", [27] = "Effect Spore", [28] = "Synchronize", [29] = "Clear Body", [30] = "Natural Cure",
+    [31] = "Lightning Rod", [32] = "Serene Grace", [33] = "Swift Swim", [34] = "Chlorophyll", [35] = "Illuminate",
+    [36] = "Trace", [37] = "Huge Power", [38] = "Poison Point", [39] = "Inner Focus", [40] = "Magma Armor",
+    [41] = "Water Veil", [42] = "Magnet Pull", [43] = "Soundproof", [44] = "Rain Dish", [45] = "Sand Stream",
+    [46] = "Pressure", [47] = "Thick Fat", [48] = "Early Bird", [49] = "Flame Body", [50] = "Run Away",
+    [51] = "Keen Eye", [52] = "Hyper Cutter", [53] = "Pickup", [54] = "Truant", [55] = "Hustle",
+    [56] = "Cute Charm", [57] = "Plus", [58] = "Minus", [59] = "Forecast", [60] = "Sticky Hold",
+    [61] = "Shed Skin", [62] = "Guts", [63] = "Marvel Scale", [64] = "Liquid Ooze", [65] = "Overgrow",
+    [66] = "Blaze", [67] = "Torrent", [68] = "Shield Dust", [69] = "Rock Head", [70] = "Sturdy",
+    [71] = "Air Lock", [72] = "Tangling Hair", [73] = "Receiver", [74] = "Power of Alchemy", [75] = "Beast Boost",
+    [76] = "RKS System", [77] = "Electric Surge", [78] = "Psychic Surge", [79] = "Misty Surge", [80] = "Grassy Surge",
+    -- Expanded ones
+    [125] = "Shell Armor",
+    [139] = "Iron Barbs",
+}
+
+local itemMap = {
+	[1] = "Master Ball",
+	[2] = "Ultra Ball",
+	[3] = "Great Ball",
+	[4] = "Poke Ball",
+	[5] = "Safari Ball",
+	[6] = "Net Ball",
+	[7] = "Dive Ball",
+	[8] = "Nest Ball",
+	[9] = "Repeat Ball",
+	[10] = "Timer Ball",
+	[11] = "Luxury Ball",
+	[12] = "Premier Ball",
+	[13] = "Potion",
+	[14] = "Antidote",
+	[15] = "Burn Heal",
+	[16] = "Ice Heal",
+	[17] = "Awakening",
+	[18] = "Paralyze Heal",
+	[19] = "Full Restore",
+	[20] = "Max Potion",
+	[21] = "Hyper Potion",
+	[22] = "Super Potion",
+	[23] = "Full Heal",
+	[24] = "Revive",
+	[25] = "Max Revive",
+	[26] = "Fresh Water",
+	[27] = "Soda Pop",
+	[28] = "Lemonade",
+	[29] = "Moomoo Milk",
+	[30] = "Energy Powder",
+	[31] = "Energy Root",
+	[32] = "Heal Powder",
+	[33] = "Revival Herb",
+	[34] = "Ether",
+	[35] = "Max Ether",
+	[36] = "Elixir",
+	[37] = "Max Elixir",
+	[38] = "Lava Cookie",
+	[39] = "Blue Flute",
+	[40] = "Yellow Flute",
+	[41] = "Red Flute",
+	[42] = "Black Flute",
+	[43] = "White Flute",
+	[44] = "Berry Juice",
+	[45] = "Sacred Ash",
+	[46] = "Shoal Salt",
+	[47] = "Shoal Shell",
+	[48] = "Red Shard",
+	[49] = "Blue Shard",
+	[50] = "Yellow Shard",
+	[51] = "Green Shard",
+	[63] = "HP Up",
+	[64] = "Protein",
+	[65] = "Iron",
+	[66] = "Carbos",
+	[67] = "Calcium",
+	[68] = "Rare Candy",
+	[69] = "PP Up",
+	[70] = "Zinc",
+	[71] = "PP Max",
+	[73] = "Guard Spec.",
+	[74] = "Dire Hit",
+	[75] = "X Attack",
+	[76] = "X Defend",
+	[77] = "X Speed",
+	[78] = "X Accuracy",
+	[79] = "X Special",
+	[80] = "Poke Doll",
+	[81] = "Fluffy Tail",
+	[83] = "Super Repel",
+	[84] = "Max Repel",
+	[85] = "Escape Rope",
+	[86] = "Repel",
+	[93] = "Sun Stone",
+	[94] = "Moon Stone",
+	[95] = "Fire Stone",
+	[96] = "Thunder Stone",
+	[97] = "Water Stone",
+	[98] = "Leaf Stone",
+	[103] = "Tiny Mushroom",
+	[104] = "Big Mushroom",
+	[105] = "Pearl",
+	[106] = "Big Pearl",
+	[107] = "Stardust",
+	[108] = "Star Piece",
+	[109] = "Nugget",
+	[110] = "Heart Scale",
+	[121] = "Orange Mail",
+	[122] = "Harbor Mail",
+	[123] = "Glitter Mail",
+	[124] = "Mech Mail",
+	[125] = "Wood Mail",
+	[126] = "Wave Mail",
+	[127] = "Bead Mail",
+	[128] = "Shadow Mail",
+	[129] = "Tropic Mail",
+	[130] = "Dream Mail",
+	[131] = "Fab Mail",
+	[132] = "Retro Mail",
+	[133] = "Cheri Berry",
+	[134] = "Chesto Berry",
+	[135] = "Pecha Berry",
+	[136] = "Rawst Berry",
+	[137] = "Aspear Berry",
+	[138] = "Leppa Berry",
+	[139] = "Oran Berry",
+	[140] = "Persim Berry",
+	[141] = "Lum Berry",
+	[142] = "Sitrus Berry",
+	[143] = "Figy Berry",
+	[144] = "Wiki Berry",
+	[145] = "Mago Berry",
+	[146] = "Aguav Berry",
+	[147] = "Iapapa Berry",
+	[148] = "Razz Berry",
+	[149] = "Bluk Berry",
+	[150] = "Nanab Berry",
+	[151] = "Wepear Berry",
+	[152] = "Pinap Berry",
+	[153] = "Pomeg Berry",
+	[154] = "Kelpsy Berry",
+	[155] = "Qualot Berry",
+	[156] = "Hondew Berry",
+	[157] = "Grepa Berry",
+	[158] = "Tamato Berry",
+	[159] = "Cornn Berry",
+	[160] = "Magost Berry",
+	[161] = "Rabuta Berry",
+	[162] = "Nomel Berry",
+	[163] = "Spelon Berry",
+	[164] = "Pamtre Berry",
+	[165] = "Watmel Berry",
+	[166] = "Durin Berry",
+	[167] = "Belue Berry",
+	[168] = "Liechi Berry",
+	[169] = "Ganlon Berry",
+	[170] = "Salac Berry",
+	[171] = "Petaya Berry",
+	[172] = "Apicot Berry",
+	[173] = "Lansat Berry",
+	[174] = "Starf Berry",
+	[175] = "Enigma Berry",
+	[179] = "Bright Powder",
+	[180] = "White Herb",
+	[181] = "Macho Brace",
+	[182] = "Exp. Share",
+	[183] = "Quick Claw",
+	[184] = "Soothe Bell",
+	[185] = "Mental Herb",
+	[186] = "Choice Band",
+	[187] = "King's Rock",
+	[188] = "Silver Powder",
+	[189] = "Amulet Coin",
+	[190] = "Cleanse Tag",
+	[191] = "Soul Dew",
+	[192] = "Deep Sea Tooth",
+	[193] = "Deep Sea Scale",
+	[194] = "Smoke Ball",
+	[195] = "Everstone",
+	[196] = "Focus Band",
+	[197] = "Lucky Egg",
+	[198] = "Scope Lens",
+	[199] = "Metal Coat",
+	[200] = "Leftovers",
+	[201] = "Dragon Scale",
+	[202] = "Light Ball",
+	[203] = "Soft Sand",
+	[204] = "Hard Stone",
+	[205] = "Miracle Seed",
+	[206] = "Black Glasses",
+	[207] = "Black Belt",
+	[208] = "Magnet",
+	[209] = "Mystic Water",
+	[210] = "Sharp Beak",
+	[211] = "Poison Barb",
+	[212] = "Never-Melt Ice",
+	[213] = "Spell Tag",
+	[214] = "Twisted Spoon",
+	[215] = "Charcoal",
+	[216] = "Dragon Fang",
+	[217] = "Silk Scarf",
+	[218] = "Up-Grade",
+	[219] = "Shell Bell",
+	[220] = "Sea Incense",
+	[221] = "Lax Incense",
+	[222] = "Lucky Punch",
+	[223] = "Metal Powder",
+	[224] = "Thick Club",
+	[225] = "Stick",
+	[226] = "Red Scarf",
+	[227] = "Blue Scarf",
+	[228] = "Pink Scarf",
+	[229] = "Green Scarf",
+	[230] = "Yellow Scarf",
+	[231] = "Wide Lens",
+	[232] = "Muscle Band",
+	[233] = "Wise Glasses",
+	[234] = "Expert Belt",
+	[235] = "Light Clay",
+	[236] = "Life Orb",
+	[237] = "Power Herb",
+	[238] = "Toxic Orb",
+	[239] = "Flame Orb",
+	[240] = "Quick Powder",
+	[241] = "Focus Sash",
+	[242] = "Zoom Lens",
+	[243] = "Metronome",
+	[244] = "Iron Ball",
+	[245] = "Lagging Tail",
+	[246] = "Destiny Knot",
+	[247] = "Black Sludge",
+	[248] = "Icy Rock",
+	[249] = "Smooth Rock",
+	[250] = "Heat Rock",
+	[251] = "Damp Rock",
+	[252] = "Grip Claw",
+	[253] = "Choice Scarf",
+	[254] = "Sticky Barb",
+	[255] = "Power Bracer",
+	[256] = "Power Belt",
+	[257] = "Power Lens",
+	[258] = "Power Band",
+	[259] = "Power Anklet",
+	[260] = "Power Weight",
+	[261] = "Shed Shell",
+	[262] = "Big Root",
+	[263] = "Choice Specs",
+	[484] = "Iron Ball",
+	[520] = "Oran Berry",
+	[264] = "Occa Berry",
+	[265] = "Passho Berry",
+	[266] = "Wacan Berry",
+	[267] = "Rindo Berry",
+	[268] = "Yache Berry",
+	[269] = "Chople Berry",
+	[270] = "Kebia Berry",
+	[271] = "Shuca Berry",
+	[272] = "Coba Berry",
+	[273] = "Payapa Berry",
+	[274] = "Tanga Berry",
+	[275] = "Charti Berry",
+	[276] = "Kasib Berry",
+	[277] = "Haban Berry",
+	[278] = "Colbur Berry",
+	[279] = "Babiri Berry",
+	[280] = "Chilan Berry",
+	[281] = "Roseli Berry",
+	[282] = "Micle Berry",
+	[283] = "Custap Berry",
+	[284] = "Jaboca Berry",
+	[285] = "Rowap Berry",
+}
+
+
 -- Global State
 local cachedPredictions = nil
 local lastPredictRead = 0
@@ -805,7 +1082,7 @@ local SPECIES_ABIL_MAP = {
     [384]={[0]="Air Lock", [1]="Air Lock"},
     [385]={[0]="Serene Grace", [1]="Serene Grace"},
     [386]={[0]="Pressure", [1]="Pressure"},
-    [387]={[0]="Overgrow", [1]="Overgrow"},
+    [387]={[0]="Shell Armor", [1]="Shell Armor"},
     [388]={[0]="Overgrow", [1]="Overgrow"},
     [389]={[0]="Overgrow", [1]="Overgrow"},
     [390]={[0]="Blaze", [1]="Blaze"},
@@ -3300,6 +3577,14 @@ local NATURE_EFFECTS = {
     ["Modest"]="+SpA/-Atk", ["Mild"]="+SpA/-Def", ["Quiet"]="+SpA/-Spe", ["Bashful"]="", ["Rash"]="+SpA/-SpD",
     ["Calm"]="+SpD/-Atk", ["Gentle"]="+SpD/-Def", ["Sassy"]="+SpD/-Spe", ["Careful"]="+SpD/-SpA", ["Quirky"]=""
 }
+local natures = {
+    "Hardy","Lonely","Brave","Adamant","Naughty",
+    "Bold","Docile","Relaxed","Impish","Lax",
+    "Timid","Hasty","Serious","Jolly","Naive",
+    "Modest","Mild","Quiet","Bashful","Rash",
+    "Calm","Gentle","Sassy","Careful","Quirky"
+}
+
 function getNatureStr(nature)
     local eff = NATURE_EFFECTS[nature]
     if eff and eff ~= "" then
@@ -3356,13 +3641,6 @@ function readBoxMon(address)
     
     -- Nature Calculation
     mon.hiddenNature = (ss[0][2] >> 16) & 0x1F 
-    local natures = {
-		"Hardy","Lonely","Brave","Adamant","Naughty",
-		"Bold","Docile","Relaxed","Impish","Lax",
-		"Timid","Hasty","Serious","Jolly","Naive",
-		"Modest","Mild","Quiet","Bashful","Rash",
-		"Calm","Gentle","Sassy","Careful","Quirky"
-    }
 
     if mon.hiddenNature == 26 or mon.hiddenNature == nil then
         mon.nature = natures[(mon.personality % 25) + 1]
@@ -3418,11 +3696,29 @@ function readBattleMon(index)
     mon.atk, mon.def, mon.spe, mon.spa, mon.spd = emu:read16(address+0x02), emu:read16(address+0x04), emu:read16(address+0x06), emu:read16(address+0x08), emu:read16(address+0x0A)
     mon.moves = {emu:read16(address+0x0C), emu:read16(address+0x0E), emu:read16(address+0x10), emu:read16(address+0x12)}
     mon.statStages = {hp=emu:read8(address+0x18),atk=emu:read8(address+0x19),def=emu:read8(address+0x1A),spe=emu:read8(address+0x1B),spa=emu:read8(address+0x1C),spd=emu:read8(address+0x1D),acc=emu:read8(address+0x1E),eva=emu:read8(address+0x1F)}
-    mon.ability = emu:read8(address + 0x20)
+    
+    -- Extract IVs from BattleMon
+    -- Standard Emerald IVs are u32 @ 0x14
+    local ivs = emu:read32(address + 0x14)
+    mon.hpIV = ivs & 0x1F
+    mon.atkIV = (ivs >> 5) & 0x1F
+    mon.defIV = (ivs >> 10) & 0x1F
+    mon.speIV = (ivs >> 15) & 0x1F
+    mon.spaIV = (ivs >> 20) & 0x1F
+    mon.spdIV = (ivs >> 25) & 0x1F
+    
+    -- R&B Layout likely: ability @ 0x20 (u16), item @ 0x22 (u16)
+    mon.ability = emu:read16(address + 0x20)
+    mon.heldItem = emu:read16(address + 0x22)
+    
     mon.currentHp, mon.maxHp, mon.level = emu:read16(address+0x2A), emu:read16(address+0x2E), emu:read8(address+0x2C)
-    mon.nickname = toString(emu:readRange(address+0x30, 10))
-    mon.personality = emu:read32(address+0x48)
-    mon.status = emu:read32(address+0x50)
+    mon.nickname = toString(emu:readRange(address + 0x30, 10))
+    mon.personality = emu:read32(address + 0x48)
+    mon.status = emu:read32(address + 0x50)
+    
+    -- Nature derivation
+    mon.nature = natures[(mon.personality % 25) + 1]
+    
     return mon
 end
 
@@ -3432,8 +3728,21 @@ function writeMonInternal(buffer, mon)
     table.insert(buffer, string.format('      "level": %d,\n', mon.level))
     table.insert(buffer, string.format('      "currentHp": %d,\n', mon.currentHp))
     table.insert(buffer, string.format('      "maxHp": %d,\n', mon.maxHp))
-    table.insert(buffer, string.format('      "item": %d,\n', mon.heldItem or 0))
+        local val = itemMap[mon.heldItem] or mon.heldItem
+    if type(val) == "string" then
+        table.insert(buffer, string.format('      "item": "%s",\n', val))
+    else
+        table.insert(buffer, string.format('      "item": %d,\n', val or 0))
+    end
     table.insert(buffer, string.format('      "nature": "%s",\n', mon.nature or "Unknown"))
+    
+    local abName = abilityMap[mon.ability] or mon.ability
+    if type(abName) == "string" then
+        table.insert(buffer, string.format('      "ability": "%s",\n', abName))
+    else
+        table.insert(buffer, string.format('      "ability": %d,\n', abName or 0))
+    end
+
     if mon.hpIV then
          table.insert(buffer, string.format('      "ivs": {"hp":%d,"atk":%d,"def":%d,"spe":%d,"spa":%d,"spd":%d},\n', mon.hpIV, mon.atkIV, mon.defIV, mon.speIV, mon.spaIV, mon.spdIV))
     end
@@ -3454,10 +3763,23 @@ function writeMonInternal(buffer, mon)
 end
 
 function exportBattle()
+    -- DEBUG: Search for Iron Ball (484 or 244)
+    local addr = BATTLE_MON_START + (1 * 0x5C)
+    local foundOffset = -1
+    for i = 0, 0x58, 2 do
+        local val = emu:read16(addr + i)
+        if val == 484 or val == 244 or val == 400 or val == 200 then -- Try some common IDs
+            foundOffset = i
+            break
+        end
+    end
+    
     local buffer = {}
-    table.insert(buffer, '{\n  "player_side": {\n    "active": {\n')
+    table.insert(buffer, '{\n  "debug_found_item_offset": ' .. foundOffset .. ',\n')
+    table.insert(buffer, '  "player_side": {\n    "active": {\n')
     writeMonInternal(buffer, readBattleMon(0))
     table.insert(buffer, '\n    },\n    "party": [\n')
+
     local pCount = emu:read8(PLAYER_PARTY_COUNT)
     local first = true
     for i = 0, 5 do
@@ -3485,7 +3807,14 @@ function exportBattle()
             end
         end
     end
-    table.insert(buffer, '\n    ]\n  }\n}\n')
+    table.insert(buffer, '\n    ]\n  }')
+    
+    -- Debug: Add raw memory hex to help find offsets
+    local data = emu:readRange(BATTLE_MON_START + (1 * 0x5C), 0x5C)
+    local hex = ""
+    for i, b in ipairs(data) do hex = hex .. string.format("%02X", b) end
+    table.insert(buffer, string.format(',\n  "raw_mem": "%s"\n}\n', hex))
+    
     local currentJSON = table.concat(buffer)
     
     if currentJSON ~= lastExportedJSON then
@@ -3537,8 +3866,9 @@ function printStateToConsole()
                 if mon.currentHp == 0 then statusStr = "[FNT]"
                 elseif mon.status ~= 0 then statusStr = getStatusString(mon.status) end
                 
-                if i == 0 then
-                    local bMon = readBattleMon(0) -- Player Active
+                -- Check if this is the active mon
+                local bMon = readBattleMon(0) -- Player Active
+                if bMon.personality == mon.personality then
                     mon.statStages = bMon.statStages
                     mon.ability = bMon.ability
                 end
@@ -3550,7 +3880,8 @@ function printStateToConsole()
                 local name = getSpeciesNameFromROM(mon.species)
                 table.insert(buffer, string.format("Slot %d: %s (%s) [Abil:%s] %s", i+1, mon.nickname, name, abilStr, statusStr))
                 table.insert(buffer, string.format("  Lv%d %s", mon.level, mon.natureStr or "Unknown"))
-                table.insert(buffer, string.format("  HP:%d/%d Item:%d", mon.currentHp, mon.maxHp, mon.heldItem or 0))
+                    local val = itemMap[mon.heldItem] or (mon.heldItem or 0)
+                table.insert(buffer, string.format("  HP:%d/%d Item:%s", mon.currentHp, mon.maxHp, val))
                 
                 local s = mon.statStages or {}
                 table.insert(buffer, string.format("  Stats: Atk:%-3d%s Def:%-3d%s SpA:%-3d%s SpD:%-3d%s Spe:%-3d%s Acc:%s Eva:%s", 
@@ -3612,7 +3943,8 @@ function printStateToConsole()
                 local name = getSpeciesNameFromROM(mon.species)
                 table.insert(buffer, string.format("Slot %d: %s (%s) [Abil:%s] %s", i+1, mon.nickname, name, abilStr, statusStr))
                 table.insert(buffer, string.format("  Lv%d %s", mon.level, mon.natureStr or "Unknown"))
-                table.insert(buffer, string.format("  HP:%d/%d Item:%d", mon.currentHp, mon.maxHp, mon.heldItem or 0))
+                    local val = itemMap[mon.heldItem] or (mon.heldItem or 0)
+                table.insert(buffer, string.format("  HP:%d/%d Item:%s", mon.currentHp, mon.maxHp, val))
 
                 local s = mon.statStages or {}
                 table.insert(buffer, string.format("  Stats: Atk:%-3d%s Def:%-3d%s SpA:%-3d%s SpD:%-3d%s Spe:%-3d%s Acc:%s Eva:%s", 
@@ -3635,7 +3967,7 @@ function printStateToConsole()
          end
     end
     
-    table.insert(buffer, "\n[PREDICTIONS]")
+    -- table.insert(buffer, "\n[PREDICTIONS]")
     if cachedPredictions then
         for line in string.gmatch(cachedPredictions, "[^\r\n]+") do
             table.insert(buffer, line)

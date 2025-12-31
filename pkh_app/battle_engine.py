@@ -174,6 +174,12 @@ class BattleEngine:
             slug = str(item).lower().replace(" ", "").replace("-", "").replace("'", "")
             mon['_rich_item'] = self.rich_data.get('items', {}).get(slug, {})
             
+        # Species (for weight and other data)
+        species = mon.get('species')
+        if species:
+            slug = str(species).lower().replace(" ", "").replace("-", "")
+            mon['_rich_species'] = self.pokedex.get(slug, {})
+            
         # Primal Reversion Check (in case enrichment is called outside switch, e.g. start of battle)
         # However, it's safer to call it explicitly.
 
@@ -1548,6 +1554,45 @@ class BattleEngine:
              elif terrain == 'Grassy': move_type = 'Grass'; move_bp *= 2
              elif terrain == 'Misty': move_type = 'Fairy'; move_bp *= 2
              elif terrain == 'Psychic': move_type = 'Psychic'; move_bp *= 2
+             
+        # Weight-based moves (Low Kick, Grass Knot, Heavy Slam, Heat Crash)
+        if move_name in ['Low Kick', 'Grass Knot']:
+            # Get defender weight from pokedex data
+            defender_weight = defender.get('_rich_species', {}).get('weight', 10.0)  # Default 10kg if missing
+            # Low Kick / Grass Knot base power by weight (kg)
+            if defender_weight < 10:
+                move_bp = 20
+            elif defender_weight < 25:
+                move_bp = 40
+            elif defender_weight < 50:
+                move_bp = 60
+            elif defender_weight < 100:
+                move_bp = 80
+            elif defender_weight < 200:
+                move_bp = 100
+            else:
+                move_bp = 120
+            # Update move_data so damage calculator uses this power
+            move_data['basePower'] = move_bp
+        
+        elif move_name in ['Heavy Slam', 'Heat Crash']:
+            # Get both weights
+            attacker_weight = attacker.get('_rich_species', {}).get('weight', 100.0)
+            defender_weight = defender.get('_rich_species', {}).get('weight', 100.0)
+            weight_ratio = attacker_weight / defender_weight if defender_weight > 0 else 5.0
+            # Base power by weight ratio
+            if weight_ratio >= 5.0:
+                move_bp = 120
+            elif weight_ratio >= 4.0:
+                move_bp = 100
+            elif weight_ratio >= 3.0:
+                move_bp = 80
+            elif weight_ratio >= 2.0:
+                move_bp = 60
+            else:
+                move_bp = 40
+            # Update move_data so damage calculator uses this power
+            move_data['basePower'] = move_bp
              
         # Ion Deluge (Normal -> Electric)
         if state.fields.get('ion_deluge') and move_type == 'Normal':

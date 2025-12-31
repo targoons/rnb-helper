@@ -34,5 +34,11 @@
     },
     "Hidden Power": {
         "bp": 60
+    },
+    "Explosion": {
+        "bp": 500
+    },
+    "Self-Destruct": {
+        "bp": 400
     }
 }

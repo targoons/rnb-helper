@@ -187,6 +187,45 @@ def main():
         # 1. Player Decision (Random)
         dual_print(f"DEBUG: Turn={turn} Active={state.player_active['species']}")
         
+        # Log Field Effects (Weather, Terrain, Hazards)
+        fields = state.fields
+        field_info = []
+        
+        # Weather
+        if fields.get('weather'):
+            w_turns = fields.get('weather_turns', 0)
+            field_info.append(f"Weather: {fields['weather']} ({w_turns} turns left)")
+            
+        # Terrain
+        if fields.get('terrain'):
+            t_turns = fields.get('terrain_turns', 0)
+            field_info.append(f"Terrain: {fields['terrain']} ({t_turns} turns left)")
+            
+        # Hazards & Screens
+        for side in ['player', 'ai']:
+            side_hazards = fields.get('hazards', {}).get(side, {})
+            side_screens = fields.get('screens', {}).get(side, {})
+            
+            active_effects = []
+            
+            # Hazards
+            if side_hazards.get('stealth_rock'): active_effects.append("Stealth Rock")
+            if side_hazards.get('spikes'): active_effects.append(f"Spikes(x{side_hazards['spikes']})")
+            if side_hazards.get('toxic_spikes'): active_effects.append(f"Toxic Spikes(x{side_hazards['toxic_spikes']})")
+            if side_hazards.get('sticky_web'): active_effects.append("Sticky Web")
+            
+            # Screens
+            if side_screens.get('reflect'): active_effects.append("Reflect")
+            if side_screens.get('light_screen'): active_effects.append("Light Screen")
+            if side_screens.get('aurora_veil'): active_effects.append("Aurora Veil")
+            if side_screens.get('tailwind'): active_effects.append("Tailwind")
+            
+            if active_effects:
+                field_info.append(f"{side.upper()} Field: {', '.join(active_effects)}")
+        
+        if field_info:
+            dual_print(f"  Field Effects: {' | '.join(field_info)}")
+
         # Log Stats
         for side, mon in [('Player', state.player_active), ('AI', state.ai_active)]:
             stats = mon.get('stats', {})
