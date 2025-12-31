@@ -115,7 +115,7 @@ app.post('/batch-calculate', (req, res) => {
         // Pre-calculate correct boosts
         let correctBoosts = {};
         if (stages) {
-            const mapStage = (s) => (s === undefined ? 0 : (s || 6) - 6);
+            const mapStage = (s) => s || 0;
             correctBoosts = {
                 atk: mapStage(stages.atk),
                 def: mapStage(stages.def),
@@ -187,7 +187,7 @@ app.post('/batch-calculate', (req, res) => {
             const dStages = defData.statStages || defData.stat_stages;
             let dBoosts = {};
             if (dStages) {
-                const mapStage = (s) => (s || 6) - 6;
+                const mapStage = (s) => s || 0;
                 dBoosts = {
                     atk: mapStage(dStages.atk),
                     def: mapStage(dStages.def),

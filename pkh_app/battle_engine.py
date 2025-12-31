@@ -643,9 +643,8 @@ class BattleEngine:
             else:
                 a_stat = attacker['stats']['spa']
                 d_stat = defender['stats']['spd']
-                
-            a_stage = attacker.get('stat_stages', {}).get('spa', 0)
-            d_stage = defender.get('stat_stages', {}).get('spd', 0)
+                a_stage = attacker.get('stat_stages', {}).get('spa', 0)
+                d_stage = defender.get('stat_stages', {}).get('spd', 0)
             
             a_mult = (2 + abs(a_stage)) / 2 if a_stage >= 0 else 2 / (2 + abs(a_stage))
             d_mult = (2 + abs(d_stage)) / 2 if d_stage >= 0 else 2 / (2 + abs(d_stage))
