@@ -8,9 +8,6 @@ class Mechanics:
         Calculates effective stat including stages, rich data modifiers, and field effects.
         """
         # 0. Wonder Room Swap
-        # If Wonder Room is active, def and spd are swapped UNLESS Unaware is involved? 
-        # (Standard Wonder Room swaps base stats, which is hard to simulate if we don't have them).
-        # We will swap the final calculated values for simplicity.
         if field and field.get('wonder_room', 0) > 0:
              if stat_name == 'def': stat_name = 'spd'
              elif stat_name == 'spd': stat_name = 'def'
@@ -36,14 +33,25 @@ class Mechanics:
         rich_ab = mon.get('_rich_ability', {})
         ab_name = rich_ab.get('name')
         
-        # Generic onModifyStat logic (Skip conditional ones handled below)
-        key = f"onModify{stat_name.capitalize()}"
+        # Generic onModifyStat logic (Casing matches rich_data: Atk, Def, SpA, SpD, Spe)
+        stat_keys = {'atk': 'Atk', 'def': 'Def', 'spa': 'SpA', 'spd': 'SpD', 'spe': 'Spe'}
+        key = f"onModify{stat_keys.get(stat_name, stat_name.capitalize())}"
         ab_mod = rich_ab.get(key)
         if isinstance(ab_mod, (int, float)):
             # Guts, Quick Feet, Marvel Scale, Flare/Toxic Boost are handled conditionally below
             conditional_ab = ['Guts', 'Quick Feet', 'Marvel Scale', 'Flare Boost', 'Toxic Boost']
             if ab_name not in conditional_ab:
                 val *= ab_mod
+        
+        # Hardcoded Fallbacks for Stat Multipliers (Huge Power, etc.)
+        if ab_name == 'Huge Power' or ab_name == 'Pure Power':
+            if stat_name == 'atk': val *= 2
+        elif ab_name == 'Gorilla Tactics':
+            if stat_name == 'atk': val *= 1.5
+        elif ab_name == 'Fur Coat':
+            if stat_name == 'def': val *= 2
+        elif ab_name == 'Hustle':
+            if stat_name == 'atk': val *= 1.5
             
         # Hardcoded Conditional Ability Speed Buffs (Rain Dance, etc)
         if stat_name == 'spe':
@@ -52,16 +60,31 @@ class Mechanics:
             if weather in ['Sun', 'Sunny Day'] and ab_name == 'Chlorophyll': val *= 2
             if weather in ['Sandstorm', 'Sand'] and ab_name == 'Sand Rush': val *= 2
             if weather in ['Hail', 'Snow'] and ab_name == 'Slush Rush': val *= 2
+            terrain = field.get('terrain') if field else None
+            if terrain == 'Electric' and ab_name == 'Surge Surfer': val *= 2
             if ab_name == 'Unburden' and mon.get('unburden_active'): val *= 2
             if ab_name == 'Quick Feet' and mon.get('status'): val *= 1.5
 
         # Items
         if not field or field.get('magic_room', 0) <= 0:
-             rich_item = mon.get('_rich_item')
-             if rich_item:
-                 item_mod = rich_item.get(key)
-                 if isinstance(item_mod, (int, float)):
-                     val *= item_mod
+             rich_item = mon.get('_rich_item', {})
+             item_mod = rich_item.get(key)
+             if isinstance(item_mod, (int, float)):
+                 val *= item_mod
+             else:
+                 # Fallback for common speed items if rich data missing/failed
+                 item_name = mon.get('item', '')
+                 if stat_name == 'spe':
+                     if item_name == 'Iron Ball' or item_name == 'Macho Brace' or 'Power' in str(item_name):
+                         val *= 0.5
+                     elif item_name == 'Choice Scarf':
+                         val *= 1.5
+                 elif stat_name == 'atk' and item_name == 'Choice Band':
+                     val *= 1.5
+                 elif stat_name == 'spa' and item_name == 'Choice Specs':
+                     val *= 1.5
+                 elif stat_name == 'spd' and item_name == 'Assault Vest':
+                     val *= 1.5
 
         
         # 3. Conditional Rich Modifiers (Ailment-based)
@@ -79,8 +102,8 @@ class Mechanics:
         status = mon.get('status')
         if status == 'brn' and stat_name == 'atk' and ab_name != 'Guts':
              val *= 0.5
-        if status == 'par' and stat_name == 'spe' and ab_name != 'Quick Feet':
-             val *= 0.5 # or 0.25 depending on generation. Run & Bun usually gen 8+, so 0.5
+        # if status == 'par' and stat_name == 'spe' and ab_name != 'Quick Feet':
+        #      val *= 0.5 # Handled in Post-Modifiers as 0.25
         
         # 4. Ally Modifiers (Awareness Expansion)
         if field and field.get('allies'):
@@ -97,6 +120,11 @@ class Mechanics:
                             if field.get('weather') not in ['Sun', 'Sunny Day']: 
                                  ally_mod = 1.0
                        val *= ally_mod
+                   
+                  # Minus / Plus (Generic 1.5x if ally has Minus/Plus)
+                  if (ab_name in ['Minus', 'Plus']) and stat_name == 'spa':
+                       if ally_rich_ab.get('name') in ['Minus', 'Plus']:
+                            val *= 1.5
                 
         # Hardcoded Speed Drop for Weight Items (if rich data misses them)
         if stat_name == 'spe':
@@ -128,7 +156,14 @@ class Mechanics:
         # 0. Always Hit Moves
         if move_acc is None or move_acc is True:
              return True
-             
+
+        # No Guard
+        if attacker.get('ability') == 'No Guard' or defender.get('ability') == 'No Guard':
+             return True
+
+        # Wonder Skin (Status moves > 50% acc become 50% base)
+        if defender.get('ability') == 'Wonder Skin' and move_data.get('category') == 'Status' and move_acc > 50:
+             move_acc = 50
         # 1. Accuracy Stage (Attacker)
         acc_stage = attacker.get('stat_stages', {}).get('acc', 0)
         acc_mult = [3/3, 4/3, 5/3, 6/3, 7/3, 8/3, 9/3]
@@ -168,10 +203,18 @@ class Mechanics:
         if def_item == 'Bright Powder' or def_item == 'Lax Incense': mod *= 0.9
         
         # 4. Ability Modifiers
+        # Hustle (Applied to modifier)
+        ab_name = attacker.get('_rich_ability', {}).get('name') or attacker.get('ability')
+        if ab_name == 'Hustle' and move_data.get('category') == 'Physical':
+             mod *= 0.8
+
         if attacker.get('ability') == 'Compound Eyes': mod *= 1.3
         if defender.get('ability') == 'Sand Veil' and field.get('weather') in ['Sand', 'Sandstorm']: mod *= 0.8
         if defender.get('ability') == 'Snow Cloak' and field.get('weather') in ['Hail', 'Snow']: mod *= 0.8
         if defender.get('ability') == 'Tangled Feet' and defender.get('confused'): mod *= 0.5
+        
+        # Victory Star (1.1x accuracy for user)
+        if attacker.get('ability') == 'Victory Star': mod *= 1.1
         
         # 5. Field
         # Gravity (1.67x accuracy)
@@ -206,6 +249,9 @@ class Mechanics:
                   if 'uproar' in p.get('volatiles', []):
                        if log: log.append(f"  But everyone is too loud to sleep! (Uproar)")
                        return True
+             if mon.get('ability') == 'Sweet Veil':
+                  if log: log.append(f"  {mon.get('species')} is protected by Sweet Veil!")
+                  return True
 
         # Safeguard Check
         sc = state.fields.get('screens', {})
@@ -521,6 +567,8 @@ class Mechanics:
                     if mon.get('status') not in ['psn', 'tox']: factor = 0
                 elif ability == 'Solar Power' and weather not in ['Sun', 'Sunny Day']: factor = 0
                 elif ability == 'Dry Skin' and weather not in ['Rain', 'Rain Dance']: factor = 0
+                elif ability == 'Disguise': factor = 0
+                elif ability in ['Volt Absorb', 'Water Absorb', 'Flash Fire', 'Lightning Rod', 'Motor Drive', 'Sap Sipper', 'Storm Drain']: factor = 0
                 
                 if factor != 0:
                     delta = int(max_hp * factor)
@@ -566,6 +614,58 @@ class Mechanics:
                 if mon.get('status') and hash(str(state.get_hash())) % 100 < 30:
                     mon['status'] = None
                     log.append(f"  {mon.get('species')} Shed Skin!")
+            elif ability == 'Hydration' and weather in ['Rain', 'Rain Dance']:
+                if mon.get('status'):
+                     mon['status'] = None
+                     log.append(f"  {mon.get('species')} Hydration cured its status!")
+            elif ability == 'Rain Dish' and weather in ['Rain', 'Rain Dance']:
+                heal = max(1, int(max_hp / 16))
+                old_hp = mon['current_hp']
+                mon['current_hp'] = min(max_hp, mon['current_hp'] + heal)
+                if mon['current_hp'] > old_hp:
+                     log.append(f"  {mon.get('species')} healed by Rain Dish (+{heal})")
+            elif ability == 'Bad Dreams':
+                 # Find opponent
+                 opponent = state.ai_active if mon == state.player_active else state.player_active
+                 if opponent.get('current_hp') > 0 and opponent.get('status') == 'slp':
+                      if opponent.get('ability') != 'Magic Guard':
+                           loss = max(1, int(opponent.get('max_hp', 100) / 8))
+                           opponent['current_hp'] -= loss
+                           log.append(f"  {opponent.get('species')} is tormented by Bad Dreams (-{loss})")
+            elif ability == 'Moody':
+                 stats = ['atk', 'def', 'spa', 'spd', 'spe', 'acc', 'eva']
+                 idx = hash(str(state.get_hash()) + 'moody' + str(mon.get('species'))) 
+                 up = stats[idx % len(stats)]
+                 down = stats[(idx + 1) % len(stats)] # Simple deterministic different choice
+                 
+                 stages = mon.setdefault('stat_stages', {})
+                 curr_up = stages.get(up, 0)
+                 if curr_up < 6:
+                      stages[up] = min(6, curr_up + 2)
+                      log.append(f"  {mon.get('species')}'s {up} rose sharply!")
+                 
+                 curr_down = stages.get(down, 0)
+                 if curr_down > -6:
+                      stages[down] = max(-6, curr_down - 1)
+                      log.append(f"  {mon.get('species')}'s {down} fell!")
+                 last_item = mon.get('_last_consumed_item')
+                 if not mon.get('item') and last_item:
+                      chance = 100 if weather in ['Sun', 'Sunny Day'] else 50
+                      if hash(str(state.get_hash()) + 'harvest' + mon.get('species')) % 100 < chance:
+                           mon['item'] = last_item
+                           mon['_last_consumed_item'] = None
+                           log.append(f"  {mon.get('species')} harvested one {last_item}!")
+            elif ability == 'Hunger Switch':
+                 if mon.get('species') == 'Morpeko':
+                      mon['species'] = 'Morpeko-Hangry'
+                      log.append(f"  {mon.get('species')} changed to Hangry Mode!")
+                 elif mon.get('species') == 'Morpeko-Hangry':
+                      mon['species'] = 'Morpeko'
+                      log.append(f"  {mon.get('species')} changed to Full Belly Mode!")
+            # Early Bird usually affects sleep turns decremented in start_turn not end_turn.
+            # But if status counter is handled here? No, Sleep counter checked in execute_turn.
+            # We can leave Early Bird for now or implement a passive reduction?
+            # Implemented in execute_turn usually.
             
             # Leech Seed
             if 'leech_seed' in mon.get('volatiles', []):
@@ -655,6 +755,31 @@ class Mechanics:
         for stat, amount in boosts.items():
             if is_contrary:
                 amount = -amount
+            
+            # Stat Drop Prevention (Big Pecks, Keen Eye, Clear Body, etc.)
+            # Note: Technically these shouldn't block self-inflicted drops (e.g. Close Combat), 
+            # but without source context, we assume protection.
+            # Contrary turns drops into raises, so we check amount < 0 AFTER logic.
+            # However, Contrary + Big Pecks: Move lowers Def -> Contrary Raises Def -> Big Pecks ignores (positive).
+            # Move raises Def -> Contrary Lowers Def -> Big Pecks protects? 
+            # (Gen 5+: Mold Breaker can bypass, but we assume standard).
+            # Actually, self-inflicted drops via Contrary are usually NOT protected by these abilities.
+            # But standard checks usually filter out 'self' source before calling this or use a flag.
+            
+            if amount < 0:
+                 ab = mon.get('ability')
+                 if ab == 'Big Pecks' and stat == 'def':
+                      log.append(f"  {mon.get('species')}'s Big Pecks prevents defense loss!")
+                      continue
+                 if ab == 'Keen Eye' and stat in ['acc', 'accuracy']: # 'acc' is internal key
+                      log.append(f"  {mon.get('species')}'s Keen Eye prevents accuracy loss!")
+                      continue
+                 if ab in ['Clear Body', 'White Smoke', 'Full Metal Body'] and stat not in ['accuracy', 'evasion']: # Usually protects all stats
+                      log.append(f"  {mon.get('species')}'s {ab} prevents stat loss!")
+                      continue
+                 if ab == 'Hyper Cutter' and stat == 'atk':
+                      log.append(f"  {mon.get('species')}'s Hyper Cutter prevents attack loss!")
+                      continue
                 
             current = stages.get(stat, 0)
             # Cap at -6/+6
@@ -681,6 +806,8 @@ class Mechanics:
         Generic modifier retriever for onBasePower, onModifyDamage, etc.
         """
         mod = 1.0
+        # print("DEBUG: get_modifier called for loop", getattr(source, "name", "Unknown"), getattr(target, "name", "Unknown"), move_name, loop_name)
+
         
         # 1. Move itself (Phase 3 Convergence)
         if move_data:
@@ -711,14 +838,20 @@ class Mechanics:
              # So we hardcode the 1.3x check if data is missing or generic
              if not val: mod *= 1.3
 
+        # Sand Force Fallback (Data often missing explicit modifier)
+        if key == 'onBasePower' and rich_ab.get('name') == 'Sand Force':
+             # Note: test_modifier_condition handles Weather/Type checks
+             cond = Mechanics.test_modifier_condition(rich_ab, mon, move_data, field, target)
+             if cond:
+                  mod *= 1.3
+
         # Special Case: Sheer Force (needs context for secondary check)
         # Usually handled via test_modifier_condition if properly defined, 
         # but let's ensure it checks the move's secondary property.
         
         # Item
-        # Item
         it = mon.get('_rich_item')
-        if it:
+        if it and mon.get('ability') != 'Klutz':
              val = it.get(key)
              if val is not None and isinstance(val, (int, float)):
                   if Mechanics.test_modifier_condition(it, mon, move_data, field, target):
@@ -763,10 +896,35 @@ class Mechanics:
                             mod *= 0.75 if aura_break else 1.33
                             break
                             
-        # 5. Fixed Defensive Modifiers (Filter / Solid Rock)
-        if key == 'onSourceModifyDamage' and context.get('effectiveness', 1) > 1:
-             if rich_ab.get('name') in ['Filter', 'Solid Rock', 'Prism Armor']:
-                  mod *= 0.75
+        # 5. Fixed Defensive Modifiers (Filter / Solid Rock / Multiscale)
+        if key == 'onSourceModifyDamage':
+             # Filter / Solid Rock (SE only)
+             if context.get('effectiveness', 1) > 1:
+                  if rich_ab.get('name') in ['Filter', 'Solid Rock', 'Prism Armor']:
+                       mod *= 0.75
+             
+             # Multiscale / Shadow Shield (Full HP)
+             if mon.get('current_hp') == mon.get('max_hp') and mon.get('max_hp', 0) > 0:
+                  if rich_ab.get('name') in ['Multiscale', 'Shadow Shield']:
+                       mod *= 0.5
+              
+              # Fluffy (Contact -> 0.5x, Fire -> 2.0x)
+             if rich_ab.get('name') == 'Fluffy':
+                  flags = move_data.get('flags', {}) if move_data else {}
+                  if flags.get('contact'):
+                       mod *= 0.5
+                  if move_data.get('type') == 'Fire':
+                       mod *= 2.0
+             
+             # Thick Fat (Fire/Ice -> 0.5x)
+             if rich_ab.get('name') == 'Thick Fat':
+                  if move_data.get('type') in ['Fire', 'Ice']:
+                       mod *= 0.5
+                       
+             # Dry Skin (Fire -> 1.25x)
+             if rich_ab.get('name') == 'Dry Skin':
+                  if move_data.get('type') == 'Fire':
+                       mod *= 1.25
                   
         return mod
 
@@ -778,8 +936,21 @@ class Mechanics:
         # 1. triggerType matching (Fighting, Dark, etc for Plates/Incenses)
         trigger_type = rich_data.get('triggerType')
         if trigger_type and move_data.get('type') != trigger_type:
-            return False
+            # Special case for Thick Fat (usually handles both Fire and Ice)
+            if name == 'Thick Fat' and move_data.get('type') == 'Fire':
+                pass # Allow Fire
+            elif name == 'Thick Fat' and move_data.get('type') == 'Ice':
+                pass # Allow Ice
+            # Special Case: Sand Force (Has triggerType='Rock' but works for Ground/Steel too)
+            elif name == 'Sand Force':
+                 pass
+            else:
+                return False
             
+        # Category Checks for specific abilities
+        move_category = move_data.get('category', 'Physical')
+        if name == 'Ice Scales' and move_category != 'Special': return False
+        
         # 2. Flag-based matching
         flags = move_data.get('flags', {})
         name = rich_data.get('name')
@@ -789,7 +960,7 @@ class Mechanics:
         if name == 'Sharpness' and not flags.get('slicing'): return False
         if name == 'Mega Launcher' and not flags.get('pulse'): return False
         if name == 'Punk Rock' and not flags.get('sound'): return False
-        if name == 'Reckless' and not flags.get('recoil'): return False
+        if name == 'Reckless' and not (flags.get('recoil') or move_data.get('recoil')): return False
         if name == 'Tough Claws' and not flags.get('contact'): return False
         
         # 3. Technician logic
@@ -840,6 +1011,8 @@ class Mechanics:
         # 7. Type-based Power
         if name == 'Water Bubble' and move_data.get('type') != 'Water': return False
         if name == 'Transistor' and move_data.get('type') != 'Electric': return False
+        if name == "Dragon's Maw" and move_data.get('type') != 'Dragon': return False
+        if name in ['Steelworker', 'Steely Spirit'] and move_data.get('type') != 'Steel': return False
         if name == "Dragon's Gale" and move_data.get('type') != 'Dragon': return False
         
         # 8. Sheer Force logic
@@ -848,7 +1021,50 @@ class Mechanics:
              has_secondary = bool(move_data.get('secondary') or move_data.get('secondaries'))
              if not has_secondary: return False
              
-        # 9. Move-specific Conditions (Expanding Force, Rising Voltage, etc)
+        # 9. Item specific conditional logic
+        context = field.get('context', {}) if field else {}
+        species = mon.get('species', '')
+        
+        if name == 'Expert Belt':
+             if context.get('effectiveness', 1) <= 1: return False
+             
+        if name == 'Tinted Lens':
+             if context.get('effectiveness', 1) >= 1: return False
+             
+        if name == 'Light Ball':
+             if 'Pikachu' not in species: return False
+        
+        if name == 'Thick Club':
+             if not any(s in species for s in ['Cubone', 'Marowak']): return False
+             
+        if name in ['Deep Sea Tooth', 'Deep Sea Scale']:
+             if 'Clamperl' not in species: return False
+             
+        if name == 'Soul Dew':
+             if not any(s in species for s in ['Latios', 'Latias']): return False
+             
+        if name == 'Muscle Band':
+             if move_data.get('category') != 'Physical': return False
+        
+        if name == 'Wise Glasses':
+             if move_data.get('category') != 'Special': return False
+             
+        if 'Memory' in name:
+             # Silvally Memories (e.g., 'Fire Memory' -> 'Fire')
+             mem_type = name.replace(' Memory', '')
+             if move_data.get('type') != mem_type: return False
+             
+        if 'Gem' in name:
+             # Type Gems (e.g., 'Fire Gem' -> 1.3x or 1.5x damage for Fire moves)
+             # NOTE: In R&B they are often 1.3x. Rich data should have the value.
+             gem_type = name.replace(' Gem', '')
+             if move_data.get('type') != gem_type: return False
+
+        if name == 'Eviolite':
+             nfes = ['Porygon2', 'Chansey', 'Doublade', 'Gligar', 'Scyther', 'Rhydon', 'Dusclops', 'Type: Null', 'Slowpoke', 'Onix', 'Magneton', 'Golbat', 'Piloswine', 'Misdreavus', 'Murkrow', 'Tangela', 'Roselia', 'Seadra', 'Electabuzz', 'Magmar', 'Togetic', 'Clefairy', 'Combusken', 'Marshtomp', 'Grovyle']
+             if species not in nfes and 'Galarian' not in species: return False
+
+        # 10. Move-specific Conditions (Expanding Force, Rising Voltage, etc)
         terrain = field.get('terrain') if field else None
         context = field.get('context', {}) if field else {}
         
@@ -921,9 +1137,48 @@ class Mechanics:
              if target and target.get('item'):
                   # Basic check. Assume removable if present for now (simplification)
                   return True
-             return False
+        
+        if 'Berry' in name and name != 'Custap Berry':
+             # Type-Resist Berries
+             TYPE_RESIST_BERRIES = {
+                  'Occa Berry': 'Fire', 'Passho Berry': 'Water', 'Wacan Berry': 'Electric',
+                  'Rindo Berry': 'Grass', 'Yache Berry': 'Ice', 'Chople Berry': 'Fighting',
+                  'Kebia Berry': 'Poison', 'Shuca Berry': 'Ground', 'Coba Berry': 'Flying',
+                  'Payapa Berry': 'Psychic', 'Tanga Berry': 'Bug', 'Charti Berry': 'Rock',
+                  'Kasib Berry': 'Ghost', 'Haban Berry': 'Dragon', 'Colbur Berry': 'Dark',
+                  'Babiri Berry': 'Steel', 'Roseli Berry': 'Fairy', 'Chilan Berry': 'Normal'
+             }
+             if name in TYPE_RESIST_BERRIES:
+                  if context.get('effectiveness', 1) > 1 and move_data.get('type') == TYPE_RESIST_BERRIES[name]:
+                       return True
+                  if name == 'Chilan Berry' and move_data.get('type') == 'Normal':
+                       return True # Chilan Berry (Normal) works on neutral hit? Usually checks type match.
+                  return False
         
         return True
+
+    @staticmethod
+    def get_stab_multiplier(attacker, move_type):
+         ab_name = attacker.get('ability') or attacker.get('_rich_ability', {}).get('name')
+         if ab_name == 'Adaptability':
+              return 2.0
+         return 1.5
+
+    @staticmethod
+    def get_type_effectiveness_with_abilities(move_type, defender, attacker=None):
+         from pkh_app.local_damage_calc import get_type_effectiveness
+         def_types = defender.get('types', ['Normal'])
+         effectiveness = get_type_effectiveness(move_type, def_types)
+
+         if attacker:
+              ab_name = attacker.get('ability') or attacker.get('_rich_ability', {}).get('name')
+              # Scrappy / Mind's Eye bypass for Ghost immunity
+              if effectiveness == 0 and move_type in ['Normal', 'Fighting']:
+                   if ab_name in ['Scrappy', "Mind's Eye"]:
+                        # Calculate effectiveness treating Ghost as neutral (1.0)
+                        effectiveness = get_type_effectiveness(move_type, [t for t in def_types if t != 'Ghost'])
+         
+         return effectiveness
 
     @staticmethod
     def get_variable_bp(move_name, attacker, defender, field=None):
@@ -1044,9 +1299,29 @@ class Mechanics:
              pp = attacker.get('_pp_trumpcard', 5)
              bp_map = {5: 40, 4: 50, 3: 60, 2: 80, 1: 200, 0: 200}
              return bp_map.get(pp, 40)
-             
         if move_name == 'Spit Up':
              layers = attacker.get('stockpile_layers', 0)
              return layers * 100
 
+    @staticmethod
+    def get_stab_multiplier(attacker, move_type):
+         ab_name = attacker.get('ability') or attacker.get('_rich_ability', {}).get('name')
+         if ab_name == 'Adaptability':
+              return 2.0
+         return 1.5
 
+    @staticmethod
+    def get_type_effectiveness_with_abilities(move_type, defender, attacker=None):
+         from pkh_app.local_damage_calc import get_type_effectiveness
+         def_types = defender.get('types', ['Normal'])
+         effectiveness = get_type_effectiveness(move_type, def_types)
+
+         if attacker:
+              ab_name = attacker.get('ability') or attacker.get('_rich_ability', {}).get('name')
+              # Scrappy / Mind's Eye bypass for Ghost immunity
+              if effectiveness == 0 and move_type in ['Normal', 'Fighting']:
+                   if ab_name in ['Scrappy', "Mind's Eye"]:
+                        # Calculate effectiveness treating Ghost as neutral (1.0)
+                        effectiveness = get_type_effectiveness(move_type, [t for t in def_types if t != 'Ghost'])
+         
+         return effectiveness
