@@ -22,7 +22,8 @@ class AIScorer:
         # This makes the AI decision-making aware of ROM-specific values
         for res in calc_res:
              m_name = res.get('moveName', '')
-             m_data = attacker.get('_rich_moves', {}).get(m_name.lower().replace(" ", "").replace("-", ""), {})
+             m_slug = m_name.lower().replace(" ", "").replace("-", "").replace("'", "")
+             m_data = attacker.get('_rich_moves', {}).get(m_slug, {})
              
              bp_mod = Mechanics.get_modifier(attacker, 'onBasePower', m_data, state.fields)
              dmg_mod = Mechanics.get_modifier(attacker, 'onModifyDamage', m_data, state.fields)
@@ -240,6 +241,14 @@ class AIScorer:
                                break
         return ctx
 
+    def _get_move_priority(self, attacker, name):
+        """Helper to get move priority from rich move data."""
+        if not name:
+            return 0
+        m_slug = name.lower().replace(" ", "").replace("-", "").replace("'", "")
+        m_data = attacker.get('_rich_moves', {}).get(m_slug, {})
+        return m_data.get('priority', 0)
+    
     def _score_single_move(self, state, name, cat, res, v_idx, ctx, roll_ctx):
         # 1. Global Pre-Checks (Sucker Punch Penalty)
         if name and "Sucker Punch" in name and ctx['sucker_penalty'] > 0:
@@ -263,8 +272,8 @@ class AIScorer:
         score = base_score + spec_score
         
         # 3. Global Post-Modifiers
-        # Priority Desperation
-        priority = res.get('priority', 0)
+        # Priority Desperation - Use helper method
+        priority = self._get_move_priority(ctx['attacker'], name)
         if ctx['ai_threatened'] and not ctx['is_faster'] and priority > 0 and cat != 'Status':
              score += 11
              
@@ -331,7 +340,9 @@ class AIScorer:
              standard_kill_moves = False
 
         if standard_kill_moves and kills:
-             if is_faster or res.get('priority', 0) > 0: score += 6 
+             # Use helper method for priority lookup
+             priority = self._get_move_priority(attacker, name)
+             if is_faster or priority > 0: score += 6 
              else: score += 3
              if attacker.get('ability') in ['Moxie', 'Beast Boost', 'Grim Neigh', 'Chilling Neigh']: score += 1
 
@@ -600,10 +611,10 @@ class AIScorer:
                  # Kill checks logic (Lines 483-487)
                  # Hard to implement without "Simulate next turn damage".
                  # Fallback: Base +6 (+3 if slept).
-                 # Cap Check
+                 # Cap Check - Shell Smash gives +2, so reject if already at +2 or higher
                  atk_stage = attacker.get('stages', {}).get('atk', 0)
                  spa_stage = attacker.get('stages', {}).get('spa', 0)
-                 if atk_stage >= 1 or atk_stage == 6 or spa_stage == 6: return -20
+                 if atk_stage >= 2 or spa_stage >= 2 or atk_stage == 6 or spa_stage == 6: return -20
             
             if name == 'Belly Drum':
                  if target_incapacitated: return 9
@@ -613,12 +624,24 @@ class AIScorer:
         return score
 
     def _is_physical(self, move_name):
-        # Simple heuristic or lookup
-        # Should rely on Mechanics or known list
-        return False # Placeholder if no lookup available
+        """Check if move is Physical category."""
+        if not move_name:
+            return False
+        # Common physical moves
+        physical_moves = ['Tackle', 'Bite', 'Rock Smash', 'Low Kick', 'Earthquake', 
+                         'Quick Attack', 'Aqua Jet', 'Mach Punch', 'U-turn', 'Volt Switch',
+                         'Pursuit', 'Sucker Punch', 'Fake Out', 'Double-Edge', 'Stomp']
+        return move_name in physical_moves
     
     def _is_special(self, move_name):
-        return False
+        """Check if move is Special category."""
+        if not move_name:
+            return False
+        # Common special moves
+        special_moves = ['Water Gun', 'Ember', 'Bubble', 'Absorb', 'Confusion',
+                        'Psybeam', 'Flamethrower', 'Surf', 'Thunderbolt', 'Ice Beam',
+                        'Hyper Voice', 'Dark Pulse', 'Shadow Ball', 'Mud Shot', 'Bubble Beam']
+        return move_name in special_moves
     
     def _score_counter_moves(self, state, attacker, defender, name, is_faster, ai_threatened):
         score = 6
@@ -626,7 +649,8 @@ class AIScorer:
              hp_pct = attacker.get('current_hp') / attacker.get('max_hp', 1)
              item = attacker.get('item', '')
              ability = attacker.get('ability', '')
-             has_safety = (hp_pct >= 1.0) and (item == 'Focus Sash' or ability == 'Sturdy')
+             # Fixed: hp_pct == 1.0 (full HP) with safety item/ability
+             has_safety = (hp_pct == 1.0) and (item == 'Focus Sash' or ability == 'Sturdy')
              
              if not has_safety: return -20 
              

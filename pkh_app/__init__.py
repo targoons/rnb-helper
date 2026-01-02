@@ -1,4 +1,4 @@
-from . import calc_client
+
 from . import state_parser
 from . import mechanics
 from . import ai_logic

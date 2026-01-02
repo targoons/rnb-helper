@@ -41,7 +41,8 @@ class Mechanics:
             # Guts, Quick Feet, Marvel Scale, Flare/Toxic Boost are handled conditionally below
             conditional_ab = ['Guts', 'Quick Feet', 'Marvel Scale', 'Flare Boost', 'Toxic Boost']
             if ab_name not in conditional_ab:
-                val *= ab_mod
+                if Mechanics.test_modifier_condition(rich_ab, mon, None, field):
+                    val *= ab_mod
         
         # Hardcoded Fallbacks for Stat Multipliers (Huge Power, etc.)
         if ab_name == 'Huge Power' or ab_name == 'Pure Power':
@@ -66,18 +67,26 @@ class Mechanics:
             if ab_name == 'Quick Feet' and mon.get('status'): val *= 1.5
 
         # Items
-        if not field or field.get('magic_room', 0) <= 0:
+        if (not field or field.get('magic_room', 0) <= 0) and mon.get('ability') != 'Klutz':
+             item_name = str(mon.get('item', '')).strip()
              rich_item = mon.get('_rich_item', {})
+             
+             # Case-insensitive check for Iron Ball / Macho Brace
+             is_iron_ball = item_name.lower() == 'iron ball'
+             is_macho_brace = item_name.lower() == 'macho brace'
+             is_power_item = 'power' in item_name.lower()
+             
              item_mod = rich_item.get(key)
              if isinstance(item_mod, (int, float)):
                  val *= item_mod
-             else:
-                 # Fallback for common speed items if rich data missing/failed
-                 item_name = mon.get('item', '')
+             elif stat_name == 'spe' and (is_iron_ball or is_macho_brace or is_power_item):
+                 # Robust fallback for speed-halving items
+                 val *= 0.5
+             
+             # Other item fallbacks
+             if not isinstance(item_mod, (int, float)):
                  if stat_name == 'spe':
-                     if item_name == 'Iron Ball' or item_name == 'Macho Brace' or 'Power' in str(item_name):
-                         val *= 0.5
-                     elif item_name == 'Choice Scarf':
+                     if item_name == 'Choice Scarf':
                          val *= 1.5
                  elif stat_name == 'atk' and item_name == 'Choice Band':
                      val *= 1.5
@@ -85,6 +94,12 @@ class Mechanics:
                      val *= 1.5
                  elif stat_name == 'spd' and item_name == 'Assault Vest':
                      val *= 1.5
+                 elif item_name == 'Soul Dew' and ('Lat' in mon.get('species', '')):
+                     if stat_name in ['spa', 'spd']: val *= 1.5
+                 elif item_name == 'Deep Sea Tooth' and 'Clamperl' in mon.get('species', ''):
+                     if stat_name == 'spa': val *= 2
+                 elif item_name == 'Deep Sea Scale' and 'Clamperl' in mon.get('species', ''):
+                     if stat_name == 'spd': val *= 2
 
         
         # 3. Conditional Rich Modifiers (Ailment-based)
@@ -126,11 +141,6 @@ class Mechanics:
                        if ally_rich_ab.get('name') in ['Minus', 'Plus']:
                             val *= 1.5
                 
-        # Hardcoded Speed Drop for Weight Items (if rich data misses them)
-        if stat_name == 'spe':
-            item_name = mon.get('item', '')
-            if item_name in ['Iron Ball', 'Macho Brace', 'Power Bracer', 'Power Belt', 'Power Lens', 'Power Band', 'Power Anklet', 'Power Weight']:
-                val *= 0.5
         
         # 3. Special Post-Modifiers (Tailwind, Paralysis)
         if stat_name == 'spe':
@@ -145,6 +155,12 @@ class Mechanics:
 
         return int(val)
 
+    @staticmethod
+    def _check_conditional_modifier(name, mon, move_data, field):
+        pass # Placeholder for logic removed debug
+        
+        # 0. Always Active (unless suppressed, but that's handled in get_modifier)
+        
     @staticmethod
     def check_accuracy(attacker, defender, move_data, field, log=None):
         """
@@ -384,15 +400,17 @@ class Mechanics:
                 continue
             
             item = mon.get('item')
-            if item == 'Flame Orb' and not mon.get('status'):
-                mon['status'] = 'brn'
-                mon['item'] = None  # Consume
-                log.append(f"  {mon.get('species')} was burned by its Flame Orb!")
+            if mon.get('ability') == 'Klutz':
+                 pass
+            elif item == 'Flame Orb' and not mon.get('status'):
+                 mon['status'] = 'brn'
+                 mon['item'] = None  # Consume
+                 log.append(f"  {mon.get('species')} was burned by its Flame Orb!")
             elif item == 'Toxic Orb' and not mon.get('status'):
-                mon['status'] = 'tox'
-                mon['toxic_counter'] = 1
-                mon['item'] = None  # Consume
-                log.append(f"  {mon.get('species')} was badly poisoned by its Toxic Orb!")
+                 mon['status'] = 'tox'
+                 mon['toxic_counter'] = 1
+                 mon['item'] = None  # Consume
+                 log.append(f"  {mon.get('species')} was badly poisoned by its Toxic Orb!")
         
         for mon in all_active:
             if not mon or mon.get('current_hp', 0) <= 0:
@@ -507,6 +525,13 @@ class Mechanics:
                       vols.remove('telekinesis')
                       log.append(f"  {mon.get('species')} was freed from telekinesis!")
              
+        # Weather Negation Check (Cloud Nine / Air Lock)
+        weather_negated = False
+        for p in all_active:
+             if p.get('ability') in ['Cloud Nine', 'Air Lock']:
+                 weather_negated = True
+                 break
+
         for mon in all_active:
             if mon.get('current_hp') <= 0: continue
             
@@ -515,7 +540,7 @@ class Mechanics:
             max_hp = mon.get('max_hp', 100)
             
             # Weather Damage
-            if weather in ['Sandstorm', 'Sand']:
+            if weather in ['Sandstorm', 'Sand'] and not weather_negated:
                 if 'Ground' not in mon['types'] and 'Rock' not in mon['types'] and 'Steel' not in mon['types']:
                     if ability not in ['Sand Force', 'Sand Rush', 'Sand Veil', 'Magic Guard', 'Overcoat']:
                         loss = max(1, int(max_hp / 16))
@@ -528,6 +553,26 @@ class Mechanics:
                         loss = max(1, int(max_hp / 16))
                         mon['current_hp'] -= loss
                         log.append(f"  {mon.get('species')} buffeted by Hail (-{loss})")
+            
+            # Weather Healing & Status Cure
+            if weather in ['Rain', 'Rain Dance']:
+                if ability == 'Hydration' and mon.get('status'):
+                    mon['status'] = None
+                    mon['status_turns'] = 0 # generic reset
+                    log.append(f"  {mon.get('species')}'s Hydration cured its status!")
+                
+                if ability == 'Rain Dish':
+                    rec = max(1, int(max_hp / 16))
+                    if mon.get('current_hp', 0) > 0 and mon['current_hp'] < max_hp:
+                         mon['current_hp'] = min(max_hp, mon['current_hp'] + rec)
+                         log.append(f"  {mon.get('species')} restored HP using Rain Dish!")
+
+            if weather in ['Hail', 'Snow']:
+                if ability == 'Ice Body':
+                    rec = max(1, int(max_hp / 16))
+                    if mon.get('current_hp', 0) > 0 and mon['current_hp'] < max_hp:
+                         mon['current_hp'] = min(max_hp, mon['current_hp'] + rec)
+                         log.append(f"  {mon.get('species')} restored HP using Ice Body!")
             
             # Status Damage
             status = mon.get('status')
@@ -565,8 +610,13 @@ class Mechanics:
                 # Check for specific conditions
                 if ability == 'Poison Heal':
                     if mon.get('status') not in ['psn', 'tox']: factor = 0
-                elif ability == 'Solar Power' and weather not in ['Sun', 'Sunny Day']: factor = 0
-                elif ability == 'Dry Skin' and weather not in ['Rain', 'Rain Dance']: factor = 0
+                elif ability == 'Dry Skin':
+                    if weather in ['Rain', 'Rain Dance']: factor = 0.125
+                    elif weather in ['Sun', 'Sunny Day']: factor = 0.125
+                    else: factor = 0
+                elif ability == 'Solar Power':
+                    if weather in ['Sun', 'Sunny Day']: factor = 0.125
+                    else: factor = 0
                 elif ability == 'Disguise': factor = 0
                 elif ability in ['Volt Absorb', 'Water Absorb', 'Flash Fire', 'Lightning Rod', 'Motor Drive', 'Sap Sipper', 'Storm Drain']: factor = 0
                 
@@ -631,7 +681,14 @@ class Mechanics:
                       if opponent.get('ability') != 'Magic Guard':
                            loss = max(1, int(opponent.get('max_hp', 100) / 8))
                            opponent['current_hp'] -= loss
-                           log.append(f"  {opponent.get('species')} is tormented by Bad Dreams (-{loss})")
+                           log.append(f"  {opponent.get('species')} hurt by Bad Dreams (-{loss})")
+            elif ability == 'Hunger Switch':
+                 if mon.get('species') == 'Morpeko':
+                      mon['species'] = 'Morpeko-Hangry'
+                      log.append("  Morpeko got hungry!")
+                 elif mon.get('species') == 'Morpeko-Hangry':
+                      mon['species'] = 'Morpeko'
+                      log.append("  Morpeko satisfied its hunger!")
             elif ability == 'Moody':
                  stats = ['atk', 'def', 'spa', 'spd', 'spe', 'acc', 'eva']
                  idx = hash(str(state.get_hash()) + 'moody' + str(mon.get('species'))) 
@@ -756,6 +813,9 @@ class Mechanics:
             if is_contrary:
                 amount = -amount
             
+            if mon.get('ability') == 'Simple':
+                amount *= 2
+            
             # Stat Drop Prevention (Big Pecks, Keen Eye, Clear Body, etc.)
             # Note: Technically these shouldn't block self-inflicted drops (e.g. Close Combat), 
             # but without source context, we assume protection.
@@ -806,6 +866,14 @@ class Mechanics:
         Generic modifier retriever for onBasePower, onModifyDamage, etc.
         """
         mod = 1.0
+        if not mon: return mod
+        rich_ab = mon.get('_rich_ability', {})
+        
+        # if key == "onBasePower":
+        #    print(f"DEBUG MODIFIER: Key={key}, Ability={rich_ab.get('name')}, Move={move_data.get('name')}, Flags={move_data.get('flags')}")
+
+        if key == 'onBasePower':
+            pass # Placeholder for the print statement, if uncommented.
         # print("DEBUG: get_modifier called for loop", getattr(source, "name", "Unknown"), getattr(target, "name", "Unknown"), move_name, loop_name)
 
         
@@ -845,6 +913,11 @@ class Mechanics:
              if cond:
                   mod *= 1.3
 
+        # Special Case: Punk Rock (Sound moves 1.3x)
+        if key == 'onBasePower' and rich_ab.get('name') == 'Punk Rock':
+             if move_data.get('flags', {}).get('sound'):
+                  mod *= 1.3
+
         # Special Case: Sheer Force (needs context for secondary check)
         # Usually handled via test_modifier_condition if properly defined, 
         # but let's ensure it checks the move's secondary property.
@@ -874,27 +947,60 @@ class Mechanics:
                             mod *= ally_mod
         
         # 4. Global Aura Modifiers (Phase 5)
-        if field:
+        if field and key == 'onBasePower':
              # Check for Air Lock / Cloud Nine (Negate all aura/weather modifiers)
              # This is a bit complex as it should affect test_modifier_condition.
              # For now, we handle Auras specifically.
              
              # aura_break_active = ... (Check player/ai/allies)
              aura_break = False
-             for p in field.get('active_mons', []):
+             active_mons = field.get('active_mons', [])
+             for p in active_mons:
                   if p.get('ability') == 'Aura Break': aura_break = True
              
              m_type = move_data.get('type') if move_data else None
              if m_type == 'Dark':
-                  for p in field.get('active_mons', []):
+                  for p in active_mons:
                        if p.get('ability') == 'Dark Aura':
-                            mod *= 0.75 if aura_break else 1.33
+                            if aura_break:
+                                 # Reverse 1.33 and apply 0.75
+                                 mod = 0.75
+                            elif mod < 1.1:
+                                 mod *= 1.33
                             break
              if m_type == 'Fairy':
-                  for p in field.get('active_mons', []):
+                  for p in active_mons:
                        if p.get('ability') == 'Fairy Aura':
-                            mod *= 0.75 if aura_break else 1.33
+                            if aura_break:
+                                 # Reverse 1.33 and apply 0.75
+                                 mod = 0.75
+                            elif mod < 1.1:
+                                 mod *= 1.33
                             break
+
+        # 5. Defensive Abilities (Source Modifiers)
+        if key == 'onSourceModifyDamage':
+             ab = mon.get('ability')
+             if ab == 'Fluffy':
+                  # 0.5x if contact, 2.0x if Fire-type move
+                  if move_data:
+                       from pkh_app.battle_engine import BattleEngine
+                       # We need a reference to the engine instance? No, we use static method
+                       # But BattleEngine is not static. We can use a simplified contact check.
+                       if move_data.get('flags', {}).get('contact'):
+                            mod *= 0.5
+                       if move_data.get('type') == 'Fire':
+                            mod *= 2.0
+             elif ab == 'Heatproof' and move_data.get('type') == 'Fire':
+                  mod *= 0.5
+             elif ab == 'Punk Rock' and move_data.get('flags', {}).get('sound'):
+                  mod *= 0.5
+             elif ab == 'Water Bubble' and move_data.get('type') == 'Fire':
+                  mod *= 0.5
+             elif ab == 'Dry Skin' and move_data.get('type') == 'Fire':
+                  mod *= 1.25
+             elif ab == 'Ice Face' and mon.get('species') == 'Eiscue' and move_data.get('category') == 'Physical':
+                  mod = 0
                             
         # 5. Fixed Defensive Modifiers (Filter / Solid Rock / Multiscale)
         if key == 'onSourceModifyDamage':
@@ -930,9 +1036,9 @@ class Mechanics:
 
     @staticmethod
     def test_modifier_condition(rich_data, mon, move_data, field, target=None):
-        if not move_data: return True
+        if move_data is None: move_data = {}
+        # if not move_data: return True # Don't shortcut: Conditions like HP don't need move
         name = rich_data.get('name')
-        
         # 1. triggerType matching (Fighting, Dark, etc for Plates/Incenses)
         trigger_type = rich_data.get('triggerType')
         if trigger_type and move_data.get('type') != trigger_type:
@@ -1155,6 +1261,8 @@ class Mechanics:
                        return True # Chilan Berry (Normal) works on neutral hit? Usually checks type match.
                   return False
         
+        if name == 'Silk Scarf':
+             print("DEBUG: Silk Scarf Reached End. Returning True.")
         return True
 
     @staticmethod

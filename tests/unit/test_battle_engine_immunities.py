@@ -1,21 +1,27 @@
 
 import unittest
 from unittest.mock import MagicMock
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
 from pkh_app.battle_engine import BattleEngine, BattleState
+from tests.test_utils import create_mocked_engine
 
 class TestBattleEngine(unittest.TestCase):
     def setUp(self):
-        self.calc_client = MagicMock()
-        self.engine = BattleEngine(self.calc_client)
+        self.engine = create_mocked_engine()
+        self.calc_client = self.engine.calc_client
+
 
     def test_flash_fire_flag(self):
         """Test that Flash Fire ability sets the flash_fire flag on the defender."""
-        self.calc_client.get_damage_rolls.return_value = [{
+        self.calc_client.calc_damage.return_value = {
             'moveName': 'Flamethrower',
             'type': 'Fire',
             'damage_rolls': [10],
             'desc': 'It hits.'
-        }]
+        }
 
         attacker = {
             'species': 'Arcanine',
@@ -38,6 +44,7 @@ class TestBattleEngine(unittest.TestCase):
             player_party=[],
             ai_party=[]
         )
+        self.engine.enricher.enrich_state(state)
 
         log = []
         self.engine.execute_turn_action(state, 'player', 'Move: Flamethrower', 'ai', log)
@@ -48,12 +55,12 @@ class TestBattleEngine(unittest.TestCase):
 
     def test_sap_sipper(self):
         """Test that Sap Sipper boosts Attack and grants immunity to Grass moves."""
-        self.calc_client.get_damage_rolls.return_value = [{
+        self.calc_client.calc_damage.return_value = {
             'moveName': 'Vine Whip',
             'type': 'Grass',
             'damage_rolls': [10],
             'desc': 'It hits.'
-        }]
+        }
 
         attacker = {
             'species': 'Bulbasaur',
@@ -76,6 +83,7 @@ class TestBattleEngine(unittest.TestCase):
             player_party=[],
             ai_party=[]
         )
+        self.engine.enricher.enrich_state(state)
 
         log = []
         self.engine.execute_turn_action(state, 'player', 'Move: Vine Whip', 'ai', log)
@@ -86,12 +94,12 @@ class TestBattleEngine(unittest.TestCase):
 
     def test_storm_drain(self):
         """Test that Storm Drain boosts SpA and grants immunity to Water moves."""
-        self.calc_client.get_damage_rolls.return_value = [{
+        self.calc_client.calc_damage.return_value = {
             'moveName': 'Water Gun',
             'type': 'Water',
             'damage_rolls': [10],
             'desc': 'It hits.'
-        }]
+        }
 
         attacker = {
             'species': 'Squirtle',
@@ -112,6 +120,7 @@ class TestBattleEngine(unittest.TestCase):
             player_party=[],
             ai_party=[]
         )
+        self.engine.enricher.enrich_state(state)
 
         log = []
         self.engine.execute_turn_action(state, 'player', 'Move: Water Gun', 'ai', log)

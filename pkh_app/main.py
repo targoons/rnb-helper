@@ -11,8 +11,8 @@ if BASE_DIR not in sys.path:
 from pkh_app.state_parser import parse_state
 from pkh_app.ai_logic import SwitchPredictor
 from pkh_app.ai_scorer import AIScorer
-from pkh_app.battle_engine import BattleState
-from pkh_app import calc_client
+from pkh_app.battle_engine import BattleState, BattleEngine
+from pkh_app.mechanics import Mechanics
 
 STATE_FILE = os.path.join(BASE_DIR, "data", "battle_state.json")
 PRED_FILE = os.path.join(BASE_DIR, "data", "predictions.txt")
@@ -47,21 +47,22 @@ def get_species_name(species_id):
 
 def normalize_mon(mon):
     if not mon: return {}
+    # state_parser already handles snake_case, ID resolution, and stat/stage normalization.
+    # We only need to ensure 'name' and 'species' are consistent for display.
     new_mon = mon.copy()
-    if 'species_id' in mon: 
-        s_id = mon['species_id']
-        name = get_species_name(s_id)
-        new_mon['name'] = name
-        new_mon['species'] = name 
+    if 'species' in new_mon:
+        new_mon['name'] = new_mon['species']
     return new_mon
 
 def patch_active_from_party(active, party):
     if not active or not party: return active
     for p_mon in party:
-        if p_mon.get('species_id') == active.get('species_id'):
+        p_sid = p_mon.get('species_id')
+        a_sid = active.get('species_id')
+        if p_sid == a_sid and p_sid is not None:
             # Sync item (Party data is more reliable than shifted battle memory)
             p_item = p_mon.get('item')
-            if p_item:
+            if p_item is not None:
                 active['item'] = p_item
             
             # Sync nature
@@ -80,7 +81,7 @@ def patch_active_from_party(active, party):
             break
     return active
 
-def write_predictions(scored_moves, best_switch, player_active, ai_active, player_calcs, ai_calcs):
+def write_predictions(scored_moves, best_switch, player_active, ai_active, player_calcs, ai_calcs, field_conditions=None):
     lines = []
     
     # --- Battle Info ---
@@ -98,9 +99,8 @@ def write_predictions(scored_moves, best_switch, player_active, ai_active, playe
         # Stats
         stages = mon.get('stat_stages', {})
         stat_strs = []
-        for stat, raw_stage in stages.items():
-            # Internal stages are 0-12, with 6 being neutral.
-            stage = raw_stage - 6
+        for stat, stage in stages.items():
+            # Already normalized to -6 to +6 in state_parser
             if stage != 0:
                 sign = "+" if stage > 0 else ""
                 stat_strs.append(f"{stat.capitalize()}{sign}{stage}")
@@ -112,27 +112,12 @@ def write_predictions(scored_moves, best_switch, player_active, ai_active, playe
     lines.append(format_mon_status(ai_active, a_name))
     
     # Speed Info
-    def get_eff_speed(mon):
-        base = mon.get('stats', {}).get('spe', 0)
-        stage = mon.get('stat_stages', {}).get('spe', 6) - 6
-        multipliers = {
-            -6: 2/8, -5: 2/7, -4: 2/6, -3: 2/5, -2: 2/4, -1: 2/3,
-            0: 1.0,
-            1: 1.5, 2: 2.0, 3: 2.5, 4: 3.0, 5: 3.5, 6: 4.0
-        }
-        val = base * multipliers.get(stage, 1.0)
+    def get_eff_speed(mon, field=None):
+        return Mechanics.get_effective_stat(mon, 'spe', field)
         
-        # Item Multipliers
-        item = mon.get('item', '')
-        if item == 'Iron Ball' or item == 'Macho Brace' or 'Power' in str(item):
-            val *= 0.5
-        elif item == 'Choice Scarf':
-            val *= 1.5
-            
-        return int(val)
-        
-    p_spe = get_eff_speed(player_active)
-    a_spe = get_eff_speed(ai_active)
+    p_spe = get_eff_speed(player_active, field_conditions)
+    a_spe = get_eff_speed(ai_active, field_conditions)
+    
     speed_text = f"Speed: {p_spe} vs {a_spe}"
     if p_spe > a_spe: speed_text += " (PLAYER FASTER)"
     elif a_spe > p_spe: speed_text += " (AI FASTER)"
@@ -182,6 +167,9 @@ def write_predictions(scored_moves, best_switch, player_active, ai_active, playe
         
         # AIScorer returns dict with 'moves', 'matrix', 'results', 'variant_weights'
         move_names = scored_moves['moves']
+        if not move_names:
+            return
+            
         matrix = scored_moves['matrix']
         weights = scored_moves['variant_weights']
         results = scored_moves['results']
@@ -189,6 +177,7 @@ def write_predictions(scored_moves, best_switch, player_active, ai_active, playe
         display_list = []
         
         num_moves = len(move_names)
+        num_variants = len(weights)
         move_probs = [0.0] * num_moves
         move_avg_scores = [0.0] * num_moves
         
@@ -197,18 +186,21 @@ def write_predictions(scored_moves, best_switch, player_active, ai_active, playe
         
         # 1. Analyze Scores & Calculate Selection Probability
         for r_idx in range(16):
-            for v_idx in range(5):
+            for v_idx in range(num_variants):
                 weight = weights[v_idx] * (1/16)
                 
                 # Get all scores for this world
                 scores_in_world = []
                 for m_idx in range(num_moves):
-                    s = matrix[r_idx * 5 + v_idx][m_idx]
+                    s = matrix[r_idx * num_variants + v_idx][m_idx]
                     scores_in_world.append(s)
                     
                     # Track score distribution
                     s_rnd = round(s, 1)
                     move_score_dists[m_idx][s_rnd] = move_score_dists[m_idx].get(s_rnd, 0.0) + weight
+
+                if not scores_in_world:
+                    continue
 
                 # Find max score (Winner)
                 max_s = max(scores_in_world)
@@ -256,7 +248,7 @@ def write_predictions(scored_moves, best_switch, player_active, ai_active, playe
                     ko_info = parts[1].strip()
             
             display_list.append({
-                'name': move_names[m_idx],
+                'name': get_move_name(move_names[m_idx]),
                 'score_str': score_str,
                 'prob': prob_pct,
                 'min_p': min_p,
@@ -276,7 +268,8 @@ def write_predictions(scored_moves, best_switch, player_active, ai_active, playe
         for item in display_list[:5]:
             # Format: "Move : Score(Prob) -> Sel: % | Dmg% (Dmg) KO [Crit: Dmg% (Dmg)]"
             ko_str = f" {item['ko_info']}" if item['ko_info'] else ""
-            lines.append(f"  {item['name']:15}: {item['score_str']:20} -> Sel: {item['prob']:3.0f}% | {item['min_p']:4.1f}-{item['max_p']:4.1f}% ({item['min_d']}-{item['max_d']}){ko_str} [Crit: {item['min_cp']:4.1f}-{item['max_cp']:4.1f}% ({item['min_cd']}-{item['max_cd']})]")
+            crit_str = f" [Crit: {item['min_cp']:4.1f}-{item['max_cp']:4.1f}% ({item['min_cd']}-{item['max_cd']})]" if item['max_cd'] > 0 else ""
+            lines.append(f"  {item['name']:15}: {item['score_str']:20} -> Sel: {item['prob']:3.0f}% | {item['min_p']:4.1f}-{item['max_p']:4.1f}% ({item['min_d']}-{item['max_d']}){ko_str}{crit_str}")
             
     if best_switch:
          sid = best_switch.get('species_id', best_switch.get('speciesId'))
@@ -298,9 +291,8 @@ def main():
     
     last_mtime = 0
     last_state = None
-    client = calc_client
-    client = calc_client
-    scorer = AIScorer(client)
+    engine = BattleEngine(species_names=SPECIES_NAMES, move_names=MOVE_NAMES)  # Uses local damage calculator
+    scorer = AIScorer(engine)  # Pass engine which has calc methods
     switch_predictor = SwitchPredictor()
     
     while True:
@@ -329,46 +321,47 @@ def main():
                     a_side = battle_state_dict.get('opponent_side', {})
                     a_party = [normalize_mon(m) for m in a_side.get('party', [])]
 
-                    # Apply Party Patch
                     player_active = patch_active_from_party(player_active, p_party)
                     ai_active = patch_active_from_party(ai_active, a_party)
+                    
+                    # Ensure engine knows about these mons (resolves rich_data)
+                    engine.enrich_mon(player_active)
+                    engine.enrich_mon(ai_active)
+                    for pm in p_party: engine.enrich_mon(pm)
+                    for am in a_party: engine.enrich_mon(am)
 
                     # Perform quick calc for immediate feedback
                     ai_moves = ai_active.get('moves', [])
                     player_moves = player_active.get('moves', [])
                     
+                    field_conditions = battle_state_dict.get('fields', {})
+                    
+                    # Calculate damage using local calculator via engine
                     try:
-                         ai_calcs = client.get_damage_rolls(ai_active, player_active, ai_moves, {})
+                         ai_calcs = engine.calc_damage_for_moves(ai_active, player_active, ai_moves, field_conditions)
                     except: ai_calcs = []
                     
                     try:
-                         player_calcs = client.get_damage_rolls(player_active, ai_active, player_moves, {})
-                    except: player_calcs = []
-                    
-                    try:
-                         player_calcs = client.get_damage_rolls(player_active, ai_active, player_moves, {})
+                         player_calcs = engine.calc_damage_for_moves(player_active, ai_active, player_moves, field_conditions)
                     except: player_calcs = []
                     
                     # Create BattleState for AIScorer
-                    p_party_list = [normalize_mon(m) for m in battle_state_dict.get('player_side', {}).get('party', [])]
-                    a_party_list = [normalize_mon(m) for m in battle_state_dict.get('opponent_side', {}).get('party', [])]
-                    
                     bs = BattleState(
                         player_active=player_active,
                         ai_active=ai_active,
-                        player_party=p_party_list,
-                        ai_party=a_party_list,
+                        player_party=p_party,
+                        ai_party=a_party,
                         last_moves=battle_state_dict.get('last_moves', {}),
-                        fields=battle_state_dict.get('fields', {})
+                        fields=field_conditions
                     )
                     
                     scored_moves = scorer.score_moves(bs, 'ai')
                     
                     best_switch = None
                     if ai_active.get('current_hp', 0) <= 0:
-                         best_switch, _ = switch_predictor.predict_switch(a_party, player_active, client)
+                         best_switch, _ = switch_predictor.predict_switch(a_party, player_active, engine)
                          
-                    write_predictions(scored_moves, best_switch, player_active, ai_active, player_calcs, ai_calcs)
+                    write_predictions(scored_moves, best_switch, player_active, ai_active, player_calcs, ai_calcs, field_conditions)
                     
             time.sleep(0.2)
             
@@ -376,7 +369,9 @@ def main():
             print("Stopping...")
             break
         except Exception as e:
+            import traceback
             print(f"Loop Error: {e}")
+            traceback.print_exc()
             time.sleep(1)
 
 if __name__ == "__main__":

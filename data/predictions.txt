@@ -1,19 +1,20 @@
-[AI ANALYSIS] 19:12:41
-[BATTLE] Turtwig vs Ekans
-Turtwig: 37/37 HP (Atk-1)
-Ekans: 20/20 HP
-Speed: 15 vs 11 (PLAYER FASTER)
+[AI ANALYSIS] 01:25:20
+[BATTLE] Turtwig vs Magikarp
+Turtwig: 37/37 HP
+Magikarp: 30/30 HP
+Speed: 15 vs 27 (AI FASTER)
 
 
 [PLAYER DAMAGE]
-  Bite           : 55.0-70.0% (11-14)  guaranteed 2HKO
+  Bite           : 30.0-36.7% (9-11)
   Growl          :  0.0- 0.0% (0-0)
-  Absorb         : 20.0-30.0% (4-6)  52.3% chance to 4HKO
+  Absorb         : 46.7-66.7% (14-20)
   Confide        :  0.0- 0.0% (0-0)
 
 [AI PREDICTION]
-  Poison Sting   : 6(80%), 8(20%)       -> Sel:  60% |  5.4-16.2% (2-6) possible 7HKO [Crit: 16.2-21.6% (6-8)]
-  Leer           : 6(100%)              -> Sel:  40% |  0.0- 0.0% (0-0) [Crit:  0.0- 0.0% (0-0)]
-  Wrap           : 0(100%)              -> Sel:   0% |  2.7- 5.4% (1-2) possible 7HKO after trapping damage [Crit:  5.4- 8.1% (2-3)]
+  Bounce         : 6(80%), 8(20%)       -> Sel: 100% | 37.8-48.6% (14-18) [Crit: 56.8-73.0% (21-27)]
+  0              : 0(100%)              -> Sel:   0% |  0.0- 0.0% (0-0)
+  0              : 0(100%)              -> Sel:   0% |  0.0- 0.0% (0-0)
+  0              : 0(100%)              -> Sel:   0% |  0.0- 0.0% (0-0)
 
 [TIP] Run 'python3 tools/run_sim.py' for deep turn simulation.

@@ -219,7 +219,7 @@ def run_suite():
             
             # Setup Battle
             state = type('State', (), {'fields': {}, 'player_party': [], 'ai_party': [], 'get_hash': lambda: 0})()
-            engine = BattleEngine(state)
+            engine = BattleEngine()
             
             attacker = case.get('attacker').copy()
             defender = case.get('defender').copy()
@@ -400,53 +400,15 @@ def run_suite():
             
     print(f"\nFinal Results: {passed} Passed, {failed} Failed")
     
-    # Export verified
-    with open('data/verified_items.json', 'w') as f:
-        json.dump(verified_items, f, indent=2)
-    print("Exported to data/verified_items.json")
-    
-    # Update audit CSV with verified items
-    update_audit_csv(verified_items)
-
-def update_audit_csv(verified_items):
-    """Update mechanics_items.csv with test evidence for verified items"""
-    import csv
-    
-    csv_path = 'mechanics_items.csv'
-    
+    # Update audit CSV and JSON with verified items
     try:
-        # Read current CSV
-        rows = []
-        with open(csv_path, 'r', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-        
-        # Update verified items
-        updated_count = 0
-        for row in rows:
-            if row['Name'].strip() in verified_items:
-                # Only update if currently unverified
-                if 'Unverified' in row['Status']:
-                    row['Status'] = 'Verified (Tested)'
-                    # Append test evidence
-                    current_evidence = row['Evidence']
-                    if 'Test: test_bulk_items.py' not in current_evidence:
-                        row['Evidence'] = current_evidence + ' | Test: test_bulk_items.py'
-                    updated_count += 1
-        
-        # Write back
-        with open(csv_path, 'w', encoding='utf-8', newline='') as f:
-            fieldnames = ['Name', 'Status', 'Evidence', 'Details']
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(rows)
-        
-        print(f"✅ Updated mechanics_items.csv: {updated_count} items marked as 'Verified (Tested)'")
-        
-    except FileNotFoundError:
-        print(f"⚠️  Warning: {csv_path} not found - skipping audit update")
-    except Exception as e:
-        print(f"⚠️  Warning: Failed to update audit CSV: {e}")
+        from .audit_utils import update_audit_with_verified
+        update_audit_with_verified(verified_items)
+    except ImportError:
+        # Fallback inline if utils missing (or during refactor)
+        print("Warning: audit_utils not found, creating local JSON only")
+        with open('data/verified_items.json', 'w') as f:
+             json.dump(verified_items, f, indent=2)
 
 if __name__ == "__main__":
     run_suite()

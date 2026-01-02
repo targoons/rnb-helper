@@ -4,11 +4,11 @@ import sys
 from pkh_app.battle_engine import BattleEngine, BattleState
 from pkh_app.ai_scorer import AIScorer
 from pkh_app.simulation import Simulation
-from pkh_app import calc_client
+
 
 class StrategyAdvisor:
     def __init__(self, species_names=None, move_names=None):
-        self.client = calc_client
+        self.client = None
         self.species_names = species_names or {}
         self.move_names = move_names or {}
         self.engine = BattleEngine(self.client, species_names=self.species_names, move_names=self.move_names)
