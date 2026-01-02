@@ -44,8 +44,6 @@ rnb_helper/
 │   └── main.py                 # Application entry point/loop
 ├── lua/                        # Emulator Scripts
 │   └── extract_state.lua       # mGBA script for state extraction
-├── calc_service/               # External Calculation Layer
-│   └── runbuncalc/             # High-fidelity damage calculator bridge
 ├── data/                       # Config & Mappings
 │   ├── item_ids.json           # RnB specific Item ID mappings
 │   └── verified_moves.json     # Audit-verified move data
@@ -62,7 +60,6 @@ rnb_helper/
 
 - **Emulator**: [mGBA](https://mgba.io/) (0.10.x recommended)
 - **Python**: 3.9+
-- **Node.js**: 16+ (for the damage calculator service)
 
 ### 1. Application Setup
 
@@ -72,15 +69,7 @@ cd rnb-helper
 pip install -r requirements.txt
 ```
 
-### 2. Calculator Service
-
-```bash
-cd calc_service
-npm install
-node server.js
-```
-
-### 3. Emulator Integration
+### 2. Emulator Integration
 
 1. Open **Pokémon Emerald Run and Bun** in mGBA.
 2. Go to `Tools` -> `Scripting`.
@@ -123,7 +112,6 @@ python3 tools/audit_engine.py
 ## 📜 Acknowledgments
 
 - **Run and Bun Team**: For the incredible ROM hack.
-- **Smogon Damage Calc**: For the foundational mathematics used in the calculator service.
 - **Bulbapedia/Smogon**: For comprehensive mechanics documentation.
 
 ---
